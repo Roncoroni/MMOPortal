@@ -17,7 +17,7 @@ builder.Services.AddSingleton<IChatService, ChatService>();
 
 builder.Services.AddControllers();
 
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options => options.AddSignalRSwaggerGen());
 
 var app = builder.Build();
 
