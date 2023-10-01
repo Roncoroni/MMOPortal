@@ -1,0 +1,35 @@
+@attribute [RenderModeAuto]
+@page "/Chat"
+@using MMOPortal.Client.Interfaces
+@inject IChatService ChatService
+
+<h3>Chat</h3>
+
+@foreach (var message in ChatService.Messages)
+{
+    <div>
+        @message
+    </div>
+}
+<InputText @bind-Value="_newMessage"></InputText>
+<button @onclick="SendChat">Send</button>
+<button @onclick="Update">Update</button>
+
+@code {
+    private string _newMessage = "";
+
+    private async Task Update()
+    {
+        await ChatService.UpdateChatMessages();
+    }
+
+    private void SendChat()
+    {
+        if (_newMessage.Length > 0)
+        {
+            ChatService.SendChatMessage(_newMessage);
+            _newMessage = string.Empty;
+        }
+    }
+
+}
