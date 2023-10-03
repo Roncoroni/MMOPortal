@@ -1,8 +1,5 @@
-using MMOPortal.Api;
-using MMOPortal.Client.Interfaces;
+using MMOPortal.Chat;
 using MMOPortal.Components;
-using MMOPortal.Services;
-using MMOPortal.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,11 +8,8 @@ builder.Services.AddRazorComponents()
     .AddServerComponents()
     .AddWebAssemblyComponents();
 
-builder.Services.AddSignalR();
-
-builder.Services.AddSingleton<IChatService, ChatService>();
-
-builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddChat();
 
 builder.Services.AddSwaggerGen(options => options.AddSignalRSwaggerGen());
 
@@ -39,8 +33,8 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-app.MapControllers();
-app.MapHub<ChatHub>("/Chat");
+var api = app.MapGroup("api/");
+api.UseChat("chat", app);
 
 app.MapRazorComponents<App>()
     .AddServerRenderMode()

@@ -1,11 +1,12 @@
 @attribute [RenderModeAuto]
 @page "/Chat"
-@using MMOPortal.Client.Interfaces
+@using MMOPortal.Shared;
 @inject IChatService ChatService
+@implements IDisposable
 
 <h3>Chat</h3>
 
-@foreach (var message in ChatService.Messages)
+@foreach (var message in _messages)
 {
     <div>
         @message
@@ -13,14 +14,19 @@
 }
 <InputText @bind-Value="_newMessage"></InputText>
 <button @onclick="SendChat">Send</button>
-<button @onclick="Update">Update</button>
 
 @code {
     private string _newMessage = "";
+    private IReadOnlyList<string> _messages = Array.Empty<string>();
+    private IDisposable? _subscription;
 
-    private async Task Update()
+    protected override void OnInitialized()
     {
-        await ChatService.UpdateChatMessages();
+        _subscription = ChatService.MessagesObservable.Subscribe(list =>
+        {
+            _messages = list;
+            InvokeAsync(StateHasChanged);
+        });
     }
 
     private void SendChat()
@@ -30,6 +36,11 @@
             ChatService.SendChatMessage(_newMessage);
             _newMessage = string.Empty;
         }
+    }
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
     }
 
 }

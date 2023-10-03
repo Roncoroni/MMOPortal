@@ -1,42 +1,79 @@
 using System.Net.Http.Json;
+using System.Reactive.Linq;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
-using MMOPortal.Client.Interfaces;
+using MMOPortal.Shared;
+using ReactiveSignalR;
 
 namespace MMOPortal.Client.Services;
 
-public class ChatHttpService : IChatService
+public class ChatHttpService : IChatService, IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly HubConnection _connection;
 
-    private readonly List<string> _messages = new List<string>();
-    private readonly IDisposable _updateConnection;
-    public IReadOnlyList<string> Messages => _messages;
+    private readonly ILogger<ChatHttpService> Logger;
 
-    public ChatHttpService(HttpClient httpClient)
+    public ChatHttpService(
+        HttpClient httpClient,
+        NavigationManager navigation,
+        ILogger<ChatHttpService> logger)
     {
         _httpClient = httpClient;
+        Logger = logger;
         _connection = new HubConnectionBuilder()
-            .WithUrl("/Chat")
+            .WithUrl(navigation.ToAbsoluteUri("/api/chat"))
+            .ConfigureLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Information);
+            })
             .WithAutomaticReconnect()
             .Build();
 
-        _updateConnection = _connection.On("ChatUpdate", async () =>
-        { 
-            await UpdateChatMessages();
-        });
+        _connection.StartAsync();
+        MessagesObservable = _connection.On("ChatUpdate")
+            .StartWith()
+            .Select(_ => _httpClient.GetFromJsonAsync<IReadOnlyList<string>>("api/chat"))
+            .Switch()
+            .Select(list => list ?? Array.Empty<string>());
+
+        _connection.Closed += error =>
+        {
+            Logger.LogInformation(error, "Connection closed: {ConnectionState}", _connection.State);
+
+            return Task.CompletedTask;
+        };
+
+        _connection.Reconnecting += error =>
+        {
+            Logger.LogInformation(error, "Reconnection: {ConnectionState}", _connection.State);
+            // Notify users the connection was lost and the client is reconnecting.
+            // Start queuing or dropping messages.
+
+            return Task.CompletedTask;
+        };
+
+        _connection.Reconnected += connectionId =>
+        {
+            Logger.LogInformation("Reconnected {ConnectionId}: {ConnectionState}", connectionId, _connection.State);
+
+            // Notify users the connection was reestablished.
+            // Start dequeuing messages queued while reconnecting if any.
+
+            return Task.CompletedTask;
+        };
     }
+
+    public IObservable<IReadOnlyList<string>> MessagesObservable { get; }
 
     public Task SendChatMessage(string message)
     {
-        return _httpClient.PostAsJsonAsync("api/Chat", message);
+        return _httpClient.PostAsJsonAsync("api/chat", message);
     }
 
-    public async Task UpdateChatMessages()
+    public void Dispose()
     {
-        var messages = await _httpClient.GetFromJsonAsync<IList<string>>("api/Chat") ??
-                       throw new InvalidOperationException();
-        _messages.Clear();
-        _messages.AddRange(messages);
+        _httpClient.Dispose();
+        _connection.DisposeAsync().AsTask();
     }
 }

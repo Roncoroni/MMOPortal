@@ -1,10 +1,9 @@
-namespace MMOPortal.Client.Interfaces;
+namespace MMOPortal.Shared;
 
 public interface IChatService
 {
-    public IReadOnlyList<string> Messages { get; }
+    public IObservable<IReadOnlyList<string>> MessagesObservable { get; }
     Task SendChatMessage(string message);
-    Task UpdateChatMessages();
 }
 
 public interface IChatHubClient

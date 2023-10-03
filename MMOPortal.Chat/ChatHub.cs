@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
-using MMOPortal.Client.Interfaces;
+using MMOPortal.Shared;
 using SignalRSwaggerGen.Attributes;
 
-namespace MMOPortal.SignalR;
+namespace MMOPortal.Chat;
 
 [SignalRHub]
 public class ChatHub: Hub<IChatHubClient>
