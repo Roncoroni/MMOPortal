@@ -22,7 +22,7 @@ public static class ChatExtension
     public static void UseChat(this IEndpointRouteBuilder endpoints, [StringSyntax("Route")] string path,WebApplication app )
     {
         var group = endpoints.MapGroup(path);
-        group.MapHub<ChatHub>("");
+        group.MapHub<ChatHub>("/hub");
         group.MapGet("", ([FromServices] IChatService chatService) => chatService.MessagesObservable.Take(1).ToTask());
         group.MapPost("", void ([FromBody] string message, IChatService chatService) => chatService.SendChatMessage(message));
     }

@@ -23,6 +23,7 @@ public class ChatService : IChatService, IDisposable
                     list.Add(s);
                     return list;
                 })
+            .StartWith(new List<string>())
             .Replay(1)
             .AutoConnect();
         MessagesObservable

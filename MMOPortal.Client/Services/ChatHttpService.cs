@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Reactive;
 using System.Reactive.Linq;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -22,7 +23,7 @@ public class ChatHttpService : IChatService, IDisposable
         _httpClient = httpClient;
         Logger = logger;
         _connection = new HubConnectionBuilder()
-            .WithUrl(navigation.ToAbsoluteUri("/api/chat"))
+            .WithUrl(navigation.ToAbsoluteUri("/api/chat/hub"))
             .ConfigureLogging(logging =>
             {
                 logging.SetMinimumLevel(LogLevel.Information);
@@ -32,7 +33,7 @@ public class ChatHttpService : IChatService, IDisposable
 
         _connection.StartAsync();
         MessagesObservable = _connection.On("ChatUpdate")
-            .StartWith()
+            .StartWith(Unit.Default)
             .Select(_ => _httpClient.GetFromJsonAsync<IReadOnlyList<string>>("api/chat"))
             .Switch()
             .Select(list => list ?? Array.Empty<string>());
