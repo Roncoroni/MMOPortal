@@ -41,6 +41,21 @@ if (app.Environment.IsDevelopment())
     app.UseWebAssemblyDebugging();
     app.UseSwagger();
     app.UseSwaggerUI();
+    using (var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope())
+    {
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+        if (roleManager?.Roles.Any() == false)
+        {
+            roleManager.CreateAsync(new ApplicationRole("Admin"));
+        }
+
+        if (userManager?.Users.Count() == 1)
+        {
+            var firstUser = userManager.Users.First();
+            userManager.AddToRoleAsync(firstUser, "Admin");
+        }
+    }
 }
 else
 {
@@ -62,6 +77,7 @@ api.UseChat("chat", app);
 
 api.MapGet("test", () => "Test");
 api.MapGet("test2", () => "Test2").RequireAuthorization();
+api.MapGet("test3", () => "Test3").RequireAuthorization(policyBuilder => policyBuilder.RequireRole("Admin"));
 
 app.MapRazorComponents<App>()
     .AddServerRenderMode()
