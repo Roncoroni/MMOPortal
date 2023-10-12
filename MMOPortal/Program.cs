@@ -1,6 +1,10 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using MMOPortal.Areas.Identity;
 using MMOPortal.Chat;
 using MMOPortal.Components;
@@ -15,7 +19,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(optionsBuilder =>
 {
     /*if (builder.Environment.IsDevelopment())
     {*/
-        optionsBuilder.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    optionsBuilder.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
     /*}
     else
     {
@@ -44,7 +48,37 @@ builder.Services.AddRazorPages();
 builder.Services
     .AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
 
-builder.Services.AddSwaggerGen(options => options.AddSignalRSwaggerGen());
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme. \r\n\r\n 
+                      Enter 'Bearer' [space] and then your token in the text input below.
+                      \r\n\r\nExample: 'Bearer 12345abcdef'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = IdentityConstants.BearerScheme
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement()
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = IdentityConstants.BearerScheme,
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+    options.AddSignalRSwaggerGen();
+});
 
 var app = builder.Build();
 
@@ -83,8 +117,20 @@ app.UseAuthorization();
 app.UseStaticFiles();
 app.MapRazorPages();
 
-var api = app.MapGroup("api/");
-api.MapGroup("account").MapIdentityApi<ApplicationUser>();
+var api = app.MapGroup("api");
+var accountApi = api.MapGroup("account");
+accountApi.MapIdentityApi<ApplicationUser>();
+accountApi.MapGet("token", async (ClaimsPrincipal claimsPrincipal, [FromServices] IServiceProvider sp) =>
+{
+    var signInManager = sp.GetRequiredService<SignInManager<ApplicationUser>>();
+    var userManager = signInManager.UserManager;
+    if (await userManager.GetUserAsync(claimsPrincipal) is not { } user)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.SignIn(claimsPrincipal, authenticationScheme: IdentityConstants.BearerScheme);
+}).RequireAuthorization();
 
 api.UseChat("chat", app);
 
