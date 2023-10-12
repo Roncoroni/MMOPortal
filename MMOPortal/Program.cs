@@ -10,8 +10,21 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthorization();
 
+
 builder.Services.AddDbContext<ApplicationDbContext>(optionsBuilder =>
-    optionsBuilder.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    /*if (builder.Environment.IsDevelopment())
+    {*/
+        optionsBuilder.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    /*}
+    else
+    {
+        var connectionString = builder.Configuration.GetSection("MYSQLCONNSTR")["localdb"];
+        optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }*/
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -36,7 +49,7 @@ builder.Services.AddSwaggerGen(options => options.AddSignalRSwaggerGen());
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsProduction())
 {
     app.UseWebAssemblyDebugging();
     app.UseSwagger();
@@ -71,7 +84,7 @@ app.UseStaticFiles();
 app.MapRazorPages();
 
 var api = app.MapGroup("api/");
-api.MapGroup("account").MapIdentityApi<IdentityUser>();
+api.MapGroup("account").MapIdentityApi<ApplicationUser>();
 
 api.UseChat("chat", app);
 

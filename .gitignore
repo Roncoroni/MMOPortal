@@ -6,3 +6,5 @@ riderModule.iml
 /.vs
 *.user
 .DS_Store
+*.db-shm
+*.db-wal

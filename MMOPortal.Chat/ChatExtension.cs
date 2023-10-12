@@ -24,6 +24,6 @@ public static class ChatExtension
         var group = endpoints.MapGroup(path);
         group.MapHub<ChatHub>("/hub");
         group.MapGet("", ([FromServices] IChatService chatService) => chatService.MessagesObservable.Take(1).ToTask());
-        group.MapPost("", void ([FromBody] string message, IChatService chatService) => chatService.SendChatMessage(message));
+        group.MapPost("", void ([FromBody] SendChatMessageParams message, IChatService chatService) => chatService.SendChatMessage(message));
     }
 }

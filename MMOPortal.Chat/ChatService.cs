@@ -24,23 +24,21 @@ public class ChatService : IChatService, IDisposable
                     return list;
                 })
             .StartWith(new List<string>())
+            .Select(list => new GetChatResponse { Messages = list })
             .Replay(1)
             .AutoConnect();
         MessagesObservable
             .TakeUntil(_disposed)
-            .Subscribe(_ =>
-            {
-                hubContext.Clients.All.ChatUpdate();
-            });
+            .Subscribe(_ => { hubContext.Clients.All.ChatUpdate(); });
     }
 
     private readonly Subject<string> _messagesSubject = new();
 
-    public IObservable<IReadOnlyList<string>> MessagesObservable { get; }
+    public IObservable<GetChatResponse> MessagesObservable { get; }
 
-    public Task SendChatMessage(string message)
+    public Task SendChatMessage(SendChatMessageParams message)
     {
-        _messagesSubject.OnNext(message);
+        _messagesSubject.OnNext(message.Message);
         return Task.CompletedTask;
     }
 

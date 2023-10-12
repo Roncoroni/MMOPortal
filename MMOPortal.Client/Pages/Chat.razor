@@ -22,9 +22,9 @@
 
     protected override void OnInitialized()
     {
-        _subscription = ChatService.MessagesObservable.Subscribe(list =>
+        _subscription = ChatService.MessagesObservable.Subscribe(response =>
         {
-            _messages = list;
+            _messages = response.Messages;
             InvokeAsync(StateHasChanged);
         });
     }
@@ -33,7 +33,7 @@
     {
         if (_newMessage.Length > 0)
         {
-            ChatService.SendChatMessage(_newMessage);
+            ChatService.SendChatMessage(new SendChatMessageParams { Message = _newMessage });
             _newMessage = string.Empty;
         }
     }

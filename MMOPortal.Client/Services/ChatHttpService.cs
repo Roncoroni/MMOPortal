@@ -24,19 +24,16 @@ public class ChatHttpService : IChatService, IDisposable
         Logger = logger;
         _connection = new HubConnectionBuilder()
             .WithUrl(navigation.ToAbsoluteUri("/api/chat/hub"))
-            .ConfigureLogging(logging =>
-            {
-                logging.SetMinimumLevel(LogLevel.Information);
-            })
+            .ConfigureLogging(logging => { logging.SetMinimumLevel(LogLevel.Information); })
             .WithAutomaticReconnect()
             .Build();
 
         _connection.StartAsync();
         MessagesObservable = _connection.On("ChatUpdate")
             .StartWith(Unit.Default)
-            .Select(_ => _httpClient.GetFromJsonAsync<IReadOnlyList<string>>("api/chat"))
+            .Select(_ => _httpClient.GetFromJsonAsync<GetChatResponse>("api/chat"))
             .Switch()
-            .Select(list => list ?? Array.Empty<string>());
+            .Select(response => response ?? new GetChatResponse());
 
         _connection.Closed += error =>
         {
@@ -65,9 +62,9 @@ public class ChatHttpService : IChatService, IDisposable
         };
     }
 
-    public IObservable<IReadOnlyList<string>> MessagesObservable { get; }
+    public IObservable<GetChatResponse> MessagesObservable { get; }
 
-    public Task SendChatMessage(string message)
+    public Task SendChatMessage(SendChatMessageParams message)
     {
         return _httpClient.PostAsJsonAsync("api/chat", message);
     }
