@@ -9,6 +9,7 @@ using MMOPortal.Areas.Identity;
 using MMOPortal.Chat;
 using MMOPortal.Components;
 using MMOPortal.Data;
+using MMOPortal.GameApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,7 @@ builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddDefaultUI();
 
 builder.Services.AddChat();
+builder.Services.AddGameApi();
 
 builder.Services.AddRazorPages();
 builder.Services
@@ -132,7 +134,8 @@ accountApi.MapGet("token", async (ClaimsPrincipal claimsPrincipal, [FromServices
     return Results.SignIn(claimsPrincipal, authenticationScheme: IdentityConstants.BearerScheme);
 }).RequireAuthorization();
 
-api.UseChat("chat", app);
+api.UseChat("chat");
+api.UseGameApi("server");
 
 api.MapGet("test", () => "Test");
 api.MapGet("test2", () => "Test2").RequireAuthorization();

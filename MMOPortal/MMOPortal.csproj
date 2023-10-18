@@ -29,6 +29,7 @@
     <ProjectReference Include="..\MMOPortal.Chat\MMOPortal.Chat.csproj" />
     <ProjectReference Include="..\MMOPortal.Client\MMOPortal.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.0-rc.1.23421.29" />
+    <ProjectReference Include="..\MMOPortal.GameApi\MMOPortal.GameApi.csproj" />
   </ItemGroup>
 
 </Project>

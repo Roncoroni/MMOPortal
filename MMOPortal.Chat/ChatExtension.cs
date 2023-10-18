@@ -19,7 +19,7 @@ public static class ChatExtension
             options.AddSignalRSwaggerGen(genOptions => genOptions.ScanAssembly(typeof(ChatExtension).Assembly)));
     }
 
-    public static void UseChat(this IEndpointRouteBuilder endpoints, [StringSyntax("Route")] string path,WebApplication app )
+    public static void UseChat(this IEndpointRouteBuilder endpoints, [StringSyntax("Route")] string path )
     {
         var group = endpoints.MapGroup(path);
         group.MapHub<ChatHub>("/hub");
