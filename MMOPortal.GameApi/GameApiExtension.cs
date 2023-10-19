@@ -1,42 +1,64 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using MMOPortal.GameApi.Data;
 
 namespace MMOPortal.GameApi;
 
 public static class GameApiExtension
 {
-    private const string AuthenticationScheme = "GameServer";
-
-    public static void AddGameApi(this IServiceCollection services)
+    public static void AddGameApi<TDbContext>(this IServiceCollection services) where TDbContext : DbContext
     {
         services.TryAddEnumerable(ServiceDescriptor
             .Singleton<IConfigureOptions<GameServerTokenOptions>, GameServerTokenConfigurationOptions>());
+
+        services.AddScoped<DbContext, TDbContext>();
+
+
         services.AddAuthentication()
-            .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(AuthenticationScheme, _ => { });
+            .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(GameServerTokenDefaults.AuthenticationScheme,
+                _ => { });
     }
 
-    public static void UseGameApi(this IEndpointRouteBuilder endpoints, [StringSyntax("Route")] string path)
+    public static void UseGameApi<TDbContext>(this IEndpointRouteBuilder endpoints, [StringSyntax("Route")] string path)
+        where TDbContext : DbContext
     {
         var group = endpoints.MapGroup(path).RequireAuthorization(builder =>
         {
-            builder.AuthenticationSchemes = new List<string> { AuthenticationScheme };
-            builder.RequireAuthenticatedUser();
+            builder.AuthenticationSchemes = new List<string> { GameServerTokenDefaults.AuthenticationScheme };
+            builder.RequireClaim(GameServerTokenDefaults.ServerIdClaim);
         });
-        group.MapGet("Status", () => true);
-        group.MapGet("token", () =>
-            {
-                var identity = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim>(), AuthenticationScheme));
+        group.MapPost("register",
+                async ([FromBody] RegisterServerParams serverIdentity, HttpContext context, TDbContext dbContext) =>
+                {
+                    var identity = new ClaimsPrincipal(
+                        new ClaimsIdentity(
+                            new List<Claim>
+                            {
+                                new(GameServerTokenDefaults.ServerIdClaim, serverIdentity.ServerId)
+                            }, GameServerTokenDefaults.AuthenticationScheme
+                        )
+                    );
 
-                return Results.SignIn(identity, null, AuthenticationScheme);
-            })
+                    var result = Results.SignIn(identity, null, GameServerTokenDefaults.AuthenticationScheme);
+                    await result.ExecuteAsync(context);
+                    dbContext.Set<GameServer>().Update(new GameServer { ServerGuid = serverIdentity.ServerId });
+                    await dbContext.SaveChangesAsync();
+                })
             .AllowAnonymous();
+        
+        group.MapGet("status", (ClaimsPrincipal user) => user.Claims.Select(claim => claim.ToString()));
+        group.MapGet("list", (TDbContext dbContext) =>
+        {
+            return dbContext.Set<GameServer>();
+        });
     }
 }

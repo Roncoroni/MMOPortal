@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -14,8 +13,10 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
     private static readonly AuthenticateResult FailedUnprotectingToken =
         AuthenticateResult.Fail("Unprotected token failed");
 
-    private static readonly AuthenticateResult TokenExpired = AuthenticateResult.Fail("Token expired");
+    private static readonly AuthenticateResult ServerIdentity = AuthenticateResult.Fail("ServerIdentity invalid");
 
+    private static readonly string TokenPrefix = $"{GameServerTokenDefaults.AuthenticationScheme} ";
+    
     public GameServerTokenHandler(IOptionsMonitor<GameServerTokenOptions> options,
         ILoggerFactory logger, UrlEncoder encoder) : base(options, logger,
         encoder)
@@ -44,14 +45,14 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
 
         var ticket = Options.ServerTokenProtector.Unprotect(token);
 
-        if (ticket?.Properties?.ExpiresUtc is not { } expiresUtc)
+        if (ticket?.Principal.FindFirstValue(GameServerTokenDefaults.ServerIdClaim) is not { } serverIdentity)
         {
             return FailedUnprotectingToken;
         }
 
-        if (TimeProvider.GetUtcNow() >= expiresUtc)
+        if (string.IsNullOrEmpty(serverIdentity))
         {
-            return TokenExpired;
+            return ServerIdentity;
         }
 
         return AuthenticateResult.Success(ticket);
@@ -59,7 +60,7 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        Response.Headers.Append(HeaderNames.WWWAuthenticate, "Server");
+        Response.Headers.Append(HeaderNames.WWWAuthenticate, GameServerTokenDefaults.AuthenticationScheme);
         return base.HandleChallengeAsync(properties);
     }
 
@@ -67,8 +68,9 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
     {
         var authorization = Request.Headers.Authorization.ToString();
 
-        return authorization.StartsWith("Server ", StringComparison.Ordinal)
-            ? authorization["Server ".Length..]
+        
+        return authorization.StartsWith(TokenPrefix, StringComparison.Ordinal)
+            ? authorization[TokenPrefix.Length..]
             : null;
     }
 
@@ -77,12 +79,18 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
 
     protected override async Task HandleSignInAsync(ClaimsPrincipal user, AuthenticationProperties? properties)
     {
-        var utcNow = TimeProvider.GetUtcNow();
-        var schemeName = Scheme?.Name ?? "GameServer";
-        
-        properties ??= new ();
-        properties.ExpiresUtc = utcNow + TimeSpan.FromHours(1);//Options.ServerTokenExpiration;
-        
+        var schemeName = Scheme.Name;
+        if (string.IsNullOrEmpty(user.FindFirstValue(GameServerTokenDefaults.ServerIdClaim)))
+        {
+            Context.Response.StatusCode = 401;
+            return;
+        }
+
+        //var utcNow = TimeProvider.GetUtcNow();
+
+        properties ??= new();
+        //properties.ExpiresUtc = utcNow + TimeSpan.FromHours(1);//Options.ServerTokenExpiration;
+
         //Logger.AuthenticationSchemeSignedIn(Scheme!.Name);
 
         var token = Options.ServerTokenProtector.Protect(new(user, properties, schemeName));

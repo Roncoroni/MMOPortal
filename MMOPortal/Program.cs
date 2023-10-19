@@ -44,7 +44,7 @@ builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddDefaultUI();
 
 builder.Services.AddChat();
-builder.Services.AddGameApi();
+builder.Services.AddGameApi<ApplicationDbContext>();
 
 builder.Services.AddRazorPages();
 builder.Services
@@ -96,13 +96,13 @@ if (!app.Environment.IsProduction())
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
         if (roleManager?.Roles.Any() == false)
         {
-            roleManager.CreateAsync(new ApplicationRole("Admin"));
+            await roleManager.CreateAsync(new ApplicationRole("Admin"));
         }
 
         if (userManager?.Users.Count() == 1)
         {
             var firstUser = userManager.Users.First();
-            userManager.AddToRoleAsync(firstUser, "Admin");
+            await userManager.AddToRoleAsync(firstUser, "Admin");
         }
     }
 }
@@ -135,7 +135,7 @@ accountApi.MapGet("token", async (ClaimsPrincipal claimsPrincipal, [FromServices
 }).RequireAuthorization();
 
 api.UseChat("chat");
-api.UseGameApi("server");
+api.UseGameApi<DbContext>("server");
 
 api.MapGet("test", () => "Test");
 api.MapGet("test2", () => "Test2").RequireAuthorization();
