@@ -7,6 +7,7 @@ namespace MMOPortal.GameApi.Data;
 [Table("Character")]
 public class Character<TUser, TKey> where TUser : IdentityUser<TKey> where TKey : IEquatable<TKey>
 {
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public virtual TKey CharacterId { get; set; }
     
     [Required]

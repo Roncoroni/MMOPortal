@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using MMOPortal.GameApi;
+using MMOPortal.GameApi.Data;
 
 namespace MMOPortal.Data;
 

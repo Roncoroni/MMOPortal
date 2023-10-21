@@ -1,0 +1,13 @@
+@page "/admin/characters"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MMOPortal.Data
+@using MMOPortal.GameApi.Data
+@inject ApplicationDbContext DbContext
+
+<h3>Character</h3>
+
+<DataGrid Items="DbContext.Set<Character<ApplicationUser, Guid>>()">
+    <PropertyColumn Property="@(c => c.CharacterId)" Sortable="true"/>
+    <PropertyColumn Property="@(c => c.Account.Id)" Sortable="true"/>
+</DataGrid>

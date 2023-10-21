@@ -1,0 +1,12 @@
+@page "/admin/servers"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MMOPortal.Data
+@using MMOPortal.GameApi.Data
+@inject ApplicationDbContext DbContext
+@rendermode InteractiveServer
+<h3>Server</h3>
+
+<DataGrid Items="DbContext.Set<GameServer>()">
+    <PropertyColumn Property="@(c => c.Id)" Sortable="true"/>
+    <PropertyColumn Property="@(c => c.ServerGuid)" Sortable="true"/>
+</DataGrid>

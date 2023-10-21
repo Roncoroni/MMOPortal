@@ -15,7 +15,7 @@ namespace MMOPortal.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.0-rc.1.23419.6");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.0-rc.2.23480.1");
 
             modelBuilder.Entity("MMOPortal.Data.ApplicationRole", b =>
                 {
@@ -128,6 +128,7 @@ namespace MMOPortal.Data.Migrations
             modelBuilder.Entity("MMOPortal.GameApi.Data.GameServer", b =>
                 {
                     b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ServerGuid")

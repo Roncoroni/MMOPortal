@@ -8,6 +8,10 @@ namespace MMOPortal.Data;
 public class ApplicationDbContext : 
     IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
+    public ApplicationDbContext()
+        : base()
+    {
+    }
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {

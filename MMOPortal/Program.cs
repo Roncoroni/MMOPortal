@@ -1,4 +1,8 @@
 using System.Security.Claims;
+using AutoMapper;
+using AutoMapper.Data;
+using AutoMapper.EntityFrameworkCore;
+using AutoMapper.EquivalencyExpression;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
@@ -8,7 +12,9 @@ using Microsoft.OpenApi.Models;
 using MMOPortal.Areas.Identity;
 using MMOPortal.Chat;
 using MMOPortal.Components;
+using MMOPortal.Components.Pages.Admin;
 using MMOPortal.Data;
+using MMOPortal.DTO;
 using MMOPortal.GameApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,8 +39,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(optionsBuilder =>
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddServerComponents()
-    .AddWebAssemblyComponents();
+    .AddInteractiveServerComponents()
+    .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -49,6 +55,15 @@ builder.Services.AddGameApi<ApplicationDbContext>();
 builder.Services.AddRazorPages();
 builder.Services
     .AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
+builder.Services.AddQuickGridEntityFrameworkAdapter();
+
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.UseEntityFrameworkCoreModel<ApplicationDbContext>();
+    cfg.AddDataReaderMapping();
+    cfg.AddCollectionMappers();
+    cfg.SetGeneratePropertyMaps<GenerateEntityFrameworkCorePrimaryKeyPropertyMaps>();
+});
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -114,9 +129,12 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseStaticFiles();
+app.UseAntiforgery();
+
 app.MapRazorPages();
 
 var api = app.MapGroup("api");
@@ -142,8 +160,8 @@ api.MapGet("test2", () => "Test2").RequireAuthorization();
 api.MapGet("test3", () => "Test3").RequireAuthorization(policyBuilder => policyBuilder.RequireRole("Admin"));
 
 app.MapRazorComponents<App>()
-    .AddServerRenderMode()
-    .AddWebAssemblyRenderMode()
+    .AddInteractiveServerRenderMode()
+    .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(MMOPortal.Client._Imports).Assembly);
 
 app.Run();
