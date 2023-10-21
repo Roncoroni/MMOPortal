@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 
-namespace MMOPortal.GameApi;
+namespace MMOPortal.GameApi.Authentication;
 
 public class GameServerTokenOptions : AuthenticationSchemeOptions
 {

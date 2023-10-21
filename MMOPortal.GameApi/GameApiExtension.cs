@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using MMOPortal.GameApi.Authentication;
 using MMOPortal.GameApi.Data;
 
 namespace MMOPortal.GameApi;
@@ -37,7 +39,7 @@ public static class GameApiExtension
             builder.RequireClaim(GameServerTokenDefaults.ServerIdClaim);
         });
         group.MapPost("register",
-                async ([FromBody] RegisterServerParams serverIdentity, HttpContext context, TDbContext dbContext) =>
+                async Task<Results<Ok<GameServerTokenResponse>, EmptyHttpResult, ProblemHttpResult>>([FromBody] RegisterServerParams serverIdentity, HttpContext context, TDbContext dbContext) =>
                 {
                     var identity = new ClaimsPrincipal(
                         new ClaimsIdentity(
@@ -52,6 +54,7 @@ public static class GameApiExtension
                     await result.ExecuteAsync(context);
                     dbContext.Set<GameServer>().Update(new GameServer { ServerGuid = serverIdentity.ServerId });
                     await dbContext.SaveChangesAsync();
+                    return TypedResults.Empty;
                 })
             .AllowAnonymous();
         

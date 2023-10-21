@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 
-namespace MMOPortal.GameApi;
+namespace MMOPortal.GameApi.Authentication;
 
 internal sealed class GameServerTokenConfigurationOptions
     (IDataProtectionProvider dp) : IConfigureNamedOptions<GameServerTokenOptions>

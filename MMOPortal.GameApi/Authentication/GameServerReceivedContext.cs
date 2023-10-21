@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 
-namespace MMOPortal.GameApi;
+namespace MMOPortal.GameApi.Authentication;
 
 public class GameServerTokenEvents
 {

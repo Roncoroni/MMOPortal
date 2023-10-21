@@ -1,4 +1,4 @@
-namespace MMOPortal.GameApi;
+namespace MMOPortal.GameApi.Authentication;
 
 public static class GameServerTokenDefaults
 {

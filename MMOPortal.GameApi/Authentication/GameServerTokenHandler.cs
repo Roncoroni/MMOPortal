@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 
-namespace MMOPortal.GameApi;
+namespace MMOPortal.GameApi.Authentication;
 
 public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerTokenOptions>
 {
@@ -93,8 +93,11 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
 
         //Logger.AuthenticationSchemeSignedIn(Scheme!.Name);
 
-        var token = Options.ServerTokenProtector.Protect(new(user, properties, schemeName));
-
-        await Context.Response.WriteAsJsonAsync(token);
+        var response = new GameServerTokenResponse
+        {
+            AccessToken = Options.ServerTokenProtector.Protect(new(user, properties, schemeName))
+        };
+        
+        await Context.Response.WriteAsJsonAsync(response);
     }
 }
