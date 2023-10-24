@@ -16,6 +16,7 @@ using MMOPortal.Components.Pages.Admin;
 using MMOPortal.Data;
 using MMOPortal.DTO;
 using MMOPortal.GameApi;
+using MMOPortal.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -140,6 +141,7 @@ app.MapRazorPages();
 var api = app.MapGroup("api");
 var accountApi = api.MapGroup("account");
 accountApi.MapIdentityApi<ApplicationUser>();
+
 accountApi.MapGet("token", async (ClaimsPrincipal claimsPrincipal, [FromServices] IServiceProvider sp) =>
 {
     var signInManager = sp.GetRequiredService<SignInManager<ApplicationUser>>();
@@ -151,9 +153,18 @@ accountApi.MapGet("token", async (ClaimsPrincipal claimsPrincipal, [FromServices
 
     return Results.SignIn(claimsPrincipal, authenticationScheme: IdentityConstants.BearerScheme);
 }).RequireAuthorization();
+accountApi.MapGet("game/info", async Task<Results<Ok<UserInfo>, ValidationProblem, NotFound>>(ClaimsPrincipal claimsPrincipal, UserManager<ApplicationUser> userManager) =>
+{
+    if (await userManager.GetUserAsync(claimsPrincipal) is not { } user)
+    {
+        return TypedResults.NotFound();
+    }
+
+    return TypedResults.Ok(new UserInfo(user.Id));
+}).RequireAuthorization();
 
 api.UseChat("chat");
-api.UseGameApi<DbContext>("server");
+api.UseGameApi<DbContext, UserManager<ApplicationUser>, ApplicationUser>("server");
 
 api.MapGet("test", () => "Test");
 api.MapGet("test2", () => "Test2").RequireAuthorization();
