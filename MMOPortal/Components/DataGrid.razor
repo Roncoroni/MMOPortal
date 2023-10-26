@@ -5,7 +5,8 @@
 <QuickGrid
     Items="Items"
     Pagination="@pagination"
-    Virtualize="true">
+    ItemKey="ItemKey"
+    @ref="grid">
     @ChildContent
 </QuickGrid>
 <Paginator State="@pagination"/>
@@ -27,5 +28,14 @@
     [Parameter]
     public RenderFragment ChildContent { get; set; }
     
+    [Parameter] 
+    public Func<TGridItem, object> ItemKey { get; set; } = x => x!;
+    
     PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+
+    QuickGrid<TGridItem> grid;
+    public async Task RefreshDataAsync()
+    {
+        await grid.RefreshDataAsync();
+    }
 }

@@ -1,10 +1,14 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace MMOPortal.GameApi.Data;
 
-public class GameServer
+[Table("GameServer")]
+public class GameServer<TKey> where TKey : IEquatable<TKey>
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public virtual string Id { get; set; }
-    public virtual string ServerGuid { get; set; }
+    public virtual TKey GameServerId { get; set; }
+    
+    [JsonIgnore]
+    public virtual string SharedSecret { get; set; }
 }

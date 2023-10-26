@@ -33,13 +33,12 @@ namespace MMOPortal.Data.Migrations
                 name: "GameServer",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    ServerGuid = table.Column<string>(type: "TEXT", nullable: false)
+                    GameServerId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SharedSecret = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_GameServer", x => x.Id);
-                    table.UniqueConstraint("AK_GameServer_ServerGuid", x => x.ServerGuid);
+                    table.PrimaryKey("PK_GameServer", x => x.GameServerId);
                 });
 
             migrationBuilder.CreateIndex(

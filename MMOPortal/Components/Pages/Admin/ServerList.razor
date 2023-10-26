@@ -2,11 +2,130 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using MMOPortal.Data
 @using MMOPortal.GameApi.Data
+@using System.Security.Cryptography
+@using AutoMapper
+@using AutoMapper.EntityFrameworkCore
+@using AutoMapper.QueryableExtensions
+@using MMOPortal.DTO
+@using MMOPortal.GameApi.Authentication
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.DataProtection
 @inject ApplicationDbContext DbContext
+@inject IMapper Mapper
+@inject GameServerTokenHandler handler
+@inject IDataProtectionProvider dp;
+
+
 @rendermode InteractiveServer
 <h3>Server</h3>
+<button class="btn btn-primary" @onclick="AddServer">Add new server</button>
 
-<DataGrid Items="DbContext.Set<GameServer>()">
-    <PropertyColumn Property="@(c => c.Id)" Sortable="true"/>
-    <PropertyColumn Property="@(c => c.ServerGuid)" Sortable="true"/>
+<DataGrid
+    Items="items"
+    ItemKey="dto => dto.GameServerId"
+    @ref="myGrid">
+    <PropertyColumn Property="@(c => c.GameServerId)" Sortable="true"/>
+    <TemplateColumn Title="SharedSecret">
+        @if (context.SharedSecretVisible)
+        {
+            <InputText
+                type="text"
+                readonly="readonly"
+                Value="@context.SharedSecret"
+                ValueExpression="() => context.SharedSecret"
+                @onclick="() => context.SharedSecretVisible = false">
+            </InputText>
+        }
+        else
+        {
+            <InputText
+                type="password"
+                readonly="readonly"
+                Value="@context.SharedSecret"
+                ValueExpression="() => context.SharedSecret"
+                @onclick="() => context.SharedSecretVisible = true">
+            </InputText>
+        }
+    </TemplateColumn>
+    <TemplateColumn Title="Token">
+        @if (!context.TokenVisible)
+        {
+            <InputText
+                type="password"
+                readonly="readonly"
+                Value="@placeholder"
+                ValueExpression="() => placeholder"
+                @onclick="() => generateToken(context)">
+            </InputText>
+        }
+        else
+        {
+            <InputText
+                type="text"
+                readonly="readonly"
+                Value="@context.Token"
+                ValueExpression="() => context.Token">
+            </InputText>
+        }
+    </TemplateColumn>
+    <TemplateColumn Title="Delete">
+        <button class="btn btn-primary" @onclick="() => DeleteServer(context)">Delete</button>
+    </TemplateColumn>
 </DataGrid>
+
+@code
+{
+    DataGrid<GameServerDTO> myGrid;
+    IQueryable<GameServerDTO> items;
+
+    string placeholder = "Placeholder";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        items = DbContext.Set<GameServer<Guid>>().ProjectTo<GameServerDTO>(Mapper.ConfigurationProvider);
+    }
+
+    public void generateToken(GameServerDTO context)
+    {
+        var identity = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                new List<Claim>
+                {
+                    new(GameServerTokenDefaults.ServerIdClaim, context.GameServerId.ToString())
+                }, GameServerTokenDefaults.AuthenticationScheme
+                )
+            );
+
+        var serverTokenProtector = new TicketDataFormat(dp.CreateProtector("MMOPortal.Authentication.GameServer", GameServerTokenDefaults.AuthenticationScheme, "Token"));
+        context.Token = handler.GenerateToken(serverTokenProtector, identity, GameServerTokenDefaults.AuthenticationScheme, null);
+        context.TokenVisible = true;
+    }
+
+    public async Task AddServer()
+    {
+        string allowed = "ABCDEFGHIJKLMONOPQRSTUVWXYZabcdefghijklmonopqrstuvwxyz0123456789";
+        int strlen = 10; // Or whatever
+        char[] randomChars = new char[strlen];
+
+        for (int i = 0; i < strlen; i++)
+        {
+            randomChars[i] = allowed[RandomNumberGenerator.GetInt32(0, allowed.Length)];
+        }
+
+        string SharedSecret = new string(randomChars);
+        var set = DbContext.Set<GameServer<Guid>>();
+        set.Add(new GameServer<Guid> { SharedSecret = SharedSecret });
+        await DbContext.SaveChangesAsync();
+        await myGrid.RefreshDataAsync();
+    }
+
+    public async Task DeleteServer(GameServerDTO context)
+    {
+        var set = DbContext.Set<GameServer<Guid>>();
+        await set.Persist(Mapper).RemoveAsync(context);
+        await DbContext.SaveChangesAsync();
+        await myGrid.RefreshDataAsync();
+    }
+}

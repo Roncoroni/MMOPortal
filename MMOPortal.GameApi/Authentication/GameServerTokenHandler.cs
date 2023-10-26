@@ -79,25 +79,31 @@ public class GameServerTokenHandler : SignInAuthenticationHandler<GameServerToke
 
     protected override async Task HandleSignInAsync(ClaimsPrincipal user, AuthenticationProperties? properties)
     {
-        var schemeName = Scheme.Name;
         if (string.IsNullOrEmpty(user.FindFirstValue(GameServerTokenDefaults.ServerIdClaim)))
         {
             Context.Response.StatusCode = 401;
             return;
         }
 
-        //var utcNow = TimeProvider.GetUtcNow();
-
-        properties ??= new();
-        //properties.ExpiresUtc = utcNow + TimeSpan.FromHours(1);//Options.ServerTokenExpiration;
-
-        //Logger.AuthenticationSchemeSignedIn(Scheme!.Name);
-
         var response = new GameServerTokenResponse
         {
-            AccessToken = Options.ServerTokenProtector.Protect(new(user, properties, schemeName))
+            AccessToken = GenerateToken(Options.ServerTokenProtector, user, Scheme.Name, properties)
         };
         
         await Context.Response.WriteAsJsonAsync(response);
+    }
+
+    public string GenerateToken(ISecureDataFormat<AuthenticationTicket> serverTokenProtector,
+        ClaimsPrincipal user, string schemeName, AuthenticationProperties? properties)
+    {
+        //var utcNow = TimeProvider.GetUtcNow();
+
+        properties ??= new();
+        
+        //properties.ExpiresUtc = utcNow + TimeSpan.FromHours(1);//Options.ServerTokenExpiration;
+
+        //Logger.AuthenticationSchemeSignedIn(Scheme!.Name);
+        
+        return serverTokenProtector.Protect(new(user, properties, schemeName));
     }
 }

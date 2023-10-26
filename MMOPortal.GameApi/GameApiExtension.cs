@@ -30,24 +30,25 @@ public static class GameApiExtension
                 _ => { });
     }
 
-    public static void UseGameApi<TDbContext, TUserManager, TUser>(this IEndpointRouteBuilder endpoints,
+    public static void UseGameApi<TDbContext, TUserManager, TUser, TKey>(this IEndpointRouteBuilder endpoints,
         [StringSyntax("Route")] string path)
         where TDbContext : DbContext
         where TUserManager : UserManager<TUser>
         where TUser : class
+        where TKey : IEquatable<TKey>
     {
         var group = endpoints.MapGroup(path).RequireAuthorization(builder =>
         {
             builder.AuthenticationSchemes = new List<string> { GameServerTokenDefaults.AuthenticationScheme };
             builder.RequireClaim(GameServerTokenDefaults.ServerIdClaim);
         });
-        group.MapPost("register",
+        /*group.MapPost("register",
                 async Task<Results<Ok<GameServerTokenResponse>, EmptyHttpResult, ProblemHttpResult, BadRequest<string>>>(
                     [FromBody] RegisterServerParams serverIdentity, HttpContext context, TDbContext dbContext) =>
                 {
                     var force = true;
 
-                    var entry = await dbContext.Set<GameServer>()
+                    var entry = await dbContext.Set<GameServer<TKey>>()
                         .FirstOrDefaultAsync(server => server.ServerGuid == serverIdentity.ServerId);
                     if (entry != default && !force)
                     {
@@ -74,10 +75,10 @@ public static class GameApiExtension
                     await dbContext.SaveChangesAsync();
                     return TypedResults.Empty;
                 })
-            .AllowAnonymous();
+            .AllowAnonymous();*/
 
         group.MapGet("status", (ClaimsPrincipal user) => user.Claims.Select(claim => claim.ToString()));
-        group.MapGet("list", (TDbContext dbContext) => { return dbContext.Set<GameServer>(); });
+        group.MapGet("list", (TDbContext dbContext) => { return dbContext.Set<GameServer<TKey>>(); });
         group.MapGet("/user/{id}/valid",
             async Task<Results<Ok, ValidationProblem, NotFound>> (string id, TUserManager userManager) =>
             {

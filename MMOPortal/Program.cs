@@ -16,6 +16,7 @@ using MMOPortal.Components.Pages.Admin;
 using MMOPortal.Data;
 using MMOPortal.DTO;
 using MMOPortal.GameApi;
+using MMOPortal.GameApi.Data;
 using MMOPortal.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -58,13 +59,12 @@ builder.Services
     .AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 
-builder.Services.AddAutoMapper(cfg =>
+builder.Services.AddAutoMapper((serviceProvider, cfg) =>
 {
-    cfg.UseEntityFrameworkCoreModel<ApplicationDbContext>();
     cfg.AddDataReaderMapping();
     cfg.AddCollectionMappers();
-    cfg.SetGeneratePropertyMaps<GenerateEntityFrameworkCorePrimaryKeyPropertyMaps>();
-});
+    cfg.UseEntityFrameworkCoreModel<ApplicationDbContext>(serviceProvider);
+}, typeof(ApplicationDbContext).Assembly);
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -153,18 +153,20 @@ accountApi.MapGet("token", async (ClaimsPrincipal claimsPrincipal, [FromServices
 
     return Results.SignIn(claimsPrincipal, authenticationScheme: IdentityConstants.BearerScheme);
 }).RequireAuthorization();
-accountApi.MapGet("game/info", async Task<Results<Ok<UserInfo>, ValidationProblem, NotFound>>(ClaimsPrincipal claimsPrincipal, UserManager<ApplicationUser> userManager) =>
-{
-    if (await userManager.GetUserAsync(claimsPrincipal) is not { } user)
+accountApi.MapGet("game/info",
+    async Task<Results<Ok<UserInfo>, ValidationProblem, NotFound>> (ClaimsPrincipal claimsPrincipal,
+        UserManager<ApplicationUser> userManager) =>
     {
-        return TypedResults.NotFound();
-    }
+        if (await userManager.GetUserAsync(claimsPrincipal) is not { } user)
+        {
+            return TypedResults.NotFound();
+        }
 
-    return TypedResults.Ok(new UserInfo(user.Id));
-}).RequireAuthorization();
+        return TypedResults.Ok(new UserInfo(user.Id));
+    }).RequireAuthorization();
 
 api.UseChat("chat");
-api.UseGameApi<DbContext, UserManager<ApplicationUser>, ApplicationUser>("server");
+api.UseGameApi<DbContext, UserManager<ApplicationUser>, ApplicationUser, Guid>("server");
 
 api.MapGet("test", () => "Test");
 api.MapGet("test2", () => "Test2").RequireAuthorization();

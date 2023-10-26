@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MMOPortal.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20231021094836_AddGameServer")]
+    [Migration("20231025181527_AddGameServer")]
     partial class AddGameServer
     {
         /// <inheritdoc />
@@ -128,19 +128,17 @@ namespace MMOPortal.Data.Migrations
                     b.ToTable("Character");
                 });
 
-            modelBuilder.Entity("MMOPortal.GameApi.Data.GameServer", b =>
+            modelBuilder.Entity("MMOPortal.GameApi.Data.GameServer<System.Guid>", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("GameServerId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ServerGuid")
+                    b.Property<string>("SharedSecret")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.HasKey("Id");
-
-                    b.HasAlternateKey("ServerGuid");
+                    b.HasKey("GameServerId");
 
                     b.ToTable("GameServer");
                 });

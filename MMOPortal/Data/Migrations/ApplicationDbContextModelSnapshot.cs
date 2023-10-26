@@ -125,19 +125,17 @@ namespace MMOPortal.Data.Migrations
                     b.ToTable("Character");
                 });
 
-            modelBuilder.Entity("MMOPortal.GameApi.Data.GameServer", b =>
+            modelBuilder.Entity("MMOPortal.GameApi.Data.GameServer<System.Guid>", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<Guid>("GameServerId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ServerGuid")
+                    b.Property<string>("SharedSecret")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.HasKey("Id");
-
-                    b.HasAlternateKey("ServerGuid");
+                    b.HasKey("GameServerId");
 
                     b.ToTable("GameServer");
                 });
