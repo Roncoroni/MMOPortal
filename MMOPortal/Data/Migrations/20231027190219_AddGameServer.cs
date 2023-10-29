@@ -16,7 +16,12 @@ namespace MMOPortal.Data.Migrations
                 columns: table => new
                 {
                     CharacterId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    AccountId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    AccountId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    PositionX = table.Column<float>(type: "REAL", nullable: false),
+                    PositionY = table.Column<float>(type: "REAL", nullable: false),
+                    PositionZ = table.Column<float>(type: "REAL", nullable: false),
+                    Rotation = table.Column<float>(type: "REAL", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -34,6 +39,7 @@ namespace MMOPortal.Data.Migrations
                 columns: table => new
                 {
                     GameServerId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
                     SharedSecret = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>

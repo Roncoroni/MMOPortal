@@ -3,15 +3,20 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using MMOPortal.DTO
+@using MMOPortal.GameApi.Data
 @inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext DbContext
+@inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 <h3>Server</h3>
 
-<DataGrid Items="UserManager.Users">
+<DataGrid Items="UserManager.Users" @ref="myGrid">
     <PropertyColumn Property="@(c => c.Id)" Sortable="true"/>
     <PropertyColumn Property="@(c => c.UserName)" Sortable="true"/>
     <PropertyColumn Property="@(c => c.Email)" Sortable="true"/>
+    <TemplateColumn Title="Character">
+        <button class="btn btn-primary" @onclick="() => AddCharacter(context)">Add</button>
+    </TemplateColumn>
     <!--<TemplateColumn Title="Admin">
         <InputCheckbox readonly="readonly" Value="@context.Roles.Contains("Admin")"></InputCheckbox>
     </TemplateColumn>-->
@@ -19,6 +24,7 @@
 
 @code
 {
+    DataGrid<ApplicationUser> myGrid;
     IQueryable<UserListDto> Users;
 
     protected override void OnInitialized()
@@ -32,5 +38,18 @@
             role => role.UserId,
             (user, roles) => new UserListDto
                 (user.Id, user.UserName, user.Email, roles.Select(role => role.Name)));
+    }
+    
+    public async Task AddCharacter(ApplicationUser context)
+    {
+        var set = DbContext.Set<Character<ApplicationUser, Guid>>();
+        set.Add(new Character<ApplicationUser, Guid>
+        {
+            Account = context, 
+            Name = context.UserName ?? "Default Name"
+        });
+        await DbContext.SaveChangesAsync();
+        await myGrid.RefreshDataAsync();
+        NavigationManager.NavigateTo("admin/characters");
     }
 }

@@ -118,6 +118,22 @@ namespace MMOPortal.Data.Migrations
                     b.Property<Guid>("AccountId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<float>("PositionX")
+                        .HasColumnType("REAL");
+
+                    b.Property<float>("PositionY")
+                        .HasColumnType("REAL");
+
+                    b.Property<float>("PositionZ")
+                        .HasColumnType("REAL");
+
+                    b.Property<float>("Rotation")
+                        .HasColumnType("REAL");
+
                     b.HasKey("CharacterId");
 
                     b.HasIndex("AccountId");
@@ -129,6 +145,10 @@ namespace MMOPortal.Data.Migrations
                 {
                     b.Property<Guid>("GameServerId")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SharedSecret")

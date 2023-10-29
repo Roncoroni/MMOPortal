@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
+using AutoMapper;
+using AutoMapper.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,9 +11,15 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MMOPortal.GameApi.Authentication;
 using MMOPortal.GameApi.Data;
+using MMOPortal.GameApi.DTO;
+using AutoMapper;
+using AutoMapper.Data;
+using AutoMapper.EquivalencyExpression;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MMOPortal.GameApi;
 
@@ -20,11 +27,15 @@ public static class GameApiExtension
 {
     public static void AddGameApi<TDbContext>(this IServiceCollection services) where TDbContext : DbContext
     {
+        services.AddAutoMapper((serviceProvider, cfg) =>
+        {
+            cfg.CreateMap(typeof(Character<,>), typeof(CharacterUpdate<>)).ReverseMap();
+        }, typeof(GameApiExtension).Assembly);
         services.TryAddEnumerable(ServiceDescriptor
             .Singleton<IConfigureOptions<GameServerTokenOptions>, GameServerTokenConfigurationOptions>());
 
         services.AddScoped<DbContext, TDbContext>();
-        
+
         services.AddAuthentication()
             .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(GameServerTokenDefaults.AuthenticationScheme,
                 _ => { });
@@ -34,10 +45,10 @@ public static class GameApiExtension
         [StringSyntax("Route")] string path)
         where TDbContext : DbContext
         where TUserManager : UserManager<TUser>
-        where TUser : class
+        where TUser : IdentityUser<TKey>
         where TKey : IEquatable<TKey>
     {
-        var group = endpoints.MapGroup(path).RequireAuthorization(builder =>
+        var serverApi = endpoints.MapGroup(path).RequireAuthorization(builder =>
         {
             builder.AuthenticationSchemes = new List<string> { GameServerTokenDefaults.AuthenticationScheme };
             builder.RequireClaim(GameServerTokenDefaults.ServerIdClaim);
@@ -77,17 +88,36 @@ public static class GameApiExtension
                 })
             .AllowAnonymous();*/
 
-        group.MapGet("status", (ClaimsPrincipal user) => user.Claims.Select(claim => claim.ToString()));
-        group.MapGet("list", (TDbContext dbContext) => { return dbContext.Set<GameServer<TKey>>(); });
-        group.MapGet("/user/{id}/valid",
-            async Task<Results<Ok, ValidationProblem, NotFound>> (string id, TUserManager userManager) =>
+        serverApi.MapGet("status", (ClaimsPrincipal user) => user.Claims.Select(claim => claim.ToString()));
+        serverApi.MapGet("list", (TDbContext dbContext) => { return dbContext.Set<GameServer<TKey>>(); });
+        serverApi.MapUserApi<TDbContext, TUserManager, TUser, TKey>("user");
+        serverApi.MapPost("characters", async Task<Results<Ok, NotFound>> (
+            [FromBody] CharacterBatchUpdate<TKey> characterBatchUpdate,
+            TDbContext dbContext,
+            IMapper mapper,
+            ILogger<CharacterBatchUpdate<TKey>> logger) =>
+        {
+            var dbSet = dbContext
+                .Set<Character<TUser, TKey>>();
+            foreach (var characterUpdate in characterBatchUpdate.Batch)
             {
-                if (await userManager.FindByIdAsync(id) is not { } user)
+                var updated = dbSet.Persist(mapper).InsertOrUpdate(characterUpdate);
+                if (updated != null)
                 {
-                    return TypedResults.NotFound();
+                    logger.LogInformation("Update succeeded: {}", updated.ToString());
                 }
-
-                return TypedResults.Ok();
-            });
+                else
+                {
+                    logger.LogWarning("Update failed");
+                }
+            }
+/*
+            await Task.WhenAll(
+                characterBatchUpdate.Batch
+                    .Select(update => dbSet.Persist(mapper).InsertOrUpdateAsync(update)));
+*/
+            await dbContext.SaveChangesAsync();
+            return TypedResults.Ok();
+        });
     }
 }

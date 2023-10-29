@@ -8,6 +8,7 @@ namespace MMOPortal.DTO;
 public class GameServerDTO
 {
     public virtual Guid GameServerId { get; set; }
+    public virtual string Name { get; set; }
     public virtual string SharedSecret { get; set; }
     public virtual bool SharedSecretVisible { get; set; } = false;
 

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AutoMapper;
 using AutoMapper.Data;
-using AutoMapper.EntityFrameworkCore;
 using AutoMapper.EquivalencyExpression;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -12,12 +11,10 @@ using Microsoft.OpenApi.Models;
 using MMOPortal.Areas.Identity;
 using MMOPortal.Chat;
 using MMOPortal.Components;
-using MMOPortal.Components.Pages.Admin;
 using MMOPortal.Data;
-using MMOPortal.DTO;
 using MMOPortal.GameApi;
-using MMOPortal.GameApi.Data;
 using MMOPortal.Shared;
+using _Imports = MMOPortal.Client._Imports;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -175,6 +172,6 @@ api.MapGet("test3", () => "Test3").RequireAuthorization(policyBuilder => policyB
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(MMOPortal.Client._Imports).Assembly);
+    .AddAdditionalAssemblies(typeof(_Imports).Assembly);
 
 app.Run();

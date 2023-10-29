@@ -26,6 +26,7 @@
     ItemKey="dto => dto.GameServerId"
     @ref="myGrid">
     <PropertyColumn Property="@(c => c.GameServerId)" Sortable="true"/>
+    <PropertyColumn Property="@(c => c.Name)" Sortable="true"/>
     <TemplateColumn Title="SharedSecret">
         @if (context.SharedSecretVisible)
         {
@@ -116,7 +117,7 @@
 
         string SharedSecret = new string(randomChars);
         var set = DbContext.Set<GameServer<Guid>>();
-        set.Add(new GameServer<Guid> { SharedSecret = SharedSecret });
+        set.Add(new GameServer<Guid> { SharedSecret = SharedSecret, Name = "Server"});
         await DbContext.SaveChangesAsync();
         await myGrid.RefreshDataAsync();
     }
