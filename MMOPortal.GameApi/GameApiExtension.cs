@@ -27,10 +27,9 @@ public static class GameApiExtension
 {
     public static void AddGameApi<TDbContext>(this IServiceCollection services) where TDbContext : DbContext
     {
-        services.AddAutoMapper((serviceProvider, cfg) =>
-        {
-            cfg.CreateMap(typeof(Character<,>), typeof(CharacterUpdate<>)).ReverseMap();
-        }, typeof(GameApiExtension).Assembly);
+        services.AddAutoMapper(
+            (serviceProvider, cfg) => { cfg.CreateMap(typeof(Character<,>), typeof(CharacterUpdate<>)).ReverseMap(); },
+            typeof(GameApiExtension).Assembly);
         services.TryAddEnumerable(ServiceDescriptor
             .Singleton<IConfigureOptions<GameServerTokenOptions>, GameServerTokenConfigurationOptions>());
 
@@ -87,7 +86,33 @@ public static class GameApiExtension
                     return TypedResults.Empty;
                 })
             .AllowAnonymous();*/
+        serverApi.MapPost("heartbeat", async Task<Results<Ok, BadRequest<string>, ForbidHttpResult>> (HeartBeatUpdate Update, ClaimsPrincipal user, TDbContext dbContext) =>
+        {
+            var now = DateTime.Now;
+            var serverIdString = user.FindFirstValue(GameServerTokenDefaults.ServerIdClaim);
+            if (serverIdString is null)
+            {
+                return TypedResults.Forbid();
+            }
 
+            if (!Guid.TryParse(serverIdString, out var serverId))
+            {
+                return TypedResults.BadRequest($"Not able to parse {serverIdString} as Guid");
+            }
+
+            var changedCount = await dbContext.Set<GameServer<Guid>>().Where(server => server.GameServerId == serverId)
+                .ExecuteUpdateAsync(calls => calls
+                    .SetProperty(server => server.LastHeartBeat, now)
+                    .SetProperty(server => server.Url, Update.Url)
+                );
+
+            return changedCount switch
+            {
+                0 => TypedResults.BadRequest($"No game server registered with {serverIdString}"),
+                > 1 => TypedResults.BadRequest($"Too many game server registered with {serverIdString}"),
+                _ => TypedResults.Ok()
+            };
+        });
         serverApi.MapGet("status", (ClaimsPrincipal user) => user.Claims.Select(claim => claim.ToString()));
         serverApi.MapGet("list", (TDbContext dbContext) => { return dbContext.Set<GameServer<TKey>>(); });
         serverApi.MapUserApi<TDbContext, TUserManager, TUser, TKey>("user");
@@ -111,6 +136,7 @@ public static class GameApiExtension
                     logger.LogWarning("Update failed");
                 }
             }
+
 /*
             await Task.WhenAll(
                 characterBatchUpdate.Batch

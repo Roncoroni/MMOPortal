@@ -36,6 +36,8 @@ public static class UserApiExtension
 
                 return TypedResults.Ok();
             });
+        userApi.MapGet("characters", (TKey id, TDbContext dbContext) => 
+            dbContext.Set<Character<TUser, TKey>>().Where(character => character.Account.Id.Equals(id)));
         userApi.MapGet("character", (TKey id, TDbContext dbContext) => 
             dbContext.Set<Character<TUser, TKey>>().SingleAsync(character => character.Account.Id.Equals(id)));
         userApi.MapPost("character", async Task<Results<Ok, NotFound>> (TKey id, 
