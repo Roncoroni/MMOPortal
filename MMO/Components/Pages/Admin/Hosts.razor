@@ -1,0 +1,42 @@
+@page "/Admin/Hosts"
+@using MMO.Game.Data
+@using MMO.Data
+@using Microsoft.EntityFrameworkCore
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+
+<h3>Hosts</h3>
+
+<button class="btn btn-primary" @onclick="AddHost">Add Instance Host</button>
+
+<DataGrid Items="items"
+          ItemKey="dto => dto.InstanceHostId"
+          @ref="grid">
+    <PropertyColumn Property="@(c => c.InstanceHostId)" Sortable="true"/>
+    <TemplateColumn Title="Delete">
+        <button class="btn btn-primary" @onclick="() => DeleteHost(context)">Delete</button>
+    </TemplateColumn>
+</DataGrid>
+
+@code {
+    DataGrid<InstanceHost> grid;
+    IQueryable<InstanceHost> items;
+
+    protected override void OnInitialized()
+    {
+        items = DbContext.InstanceHosts;
+    }
+
+    private async Task AddHost()
+    {
+        var newHost = new InstanceHost();
+        DbContext.InstanceHosts.Add(newHost);
+        await DbContext.SaveChangesAsync();
+    }
+
+    private async Task DeleteHost(InstanceHost host)
+    {
+        await DbContext.InstanceHosts.Where(instanceHost => instanceHost == host).ExecuteDeleteAsync();
+        await grid.RefreshDataAsync();
+    }
+}

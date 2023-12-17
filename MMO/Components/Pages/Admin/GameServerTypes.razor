@@ -1,0 +1,98 @@
+@page "/Admin/GameServerTypes"
+@using MMO.Game.Data
+@using MMO.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore.Storage
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject NavigationManager NavigationManager
+
+<h3>Hosts</h3>
+
+<button 
+    class="btn btn-secondary" 
+    @onclick="AddServerType">Add Server Type</button>
+<button 
+    class="btn btn-primary" 
+    disabled="@DbContext.ChangeTracker.HasChanges()"
+    @onclick="Save">Save</button>
+
+<DataGrid Items="items"
+          ItemKey="dto => dto.GameServerTypeId"
+          @ref="grid">
+    <PropertyColumn Property="@(c => c.GameServerTypeId)" Sortable="true"/>
+    <TemplateColumn Sortable="true" Title="Name">
+        <InputText @bind="@context.Name"></InputText>
+    </TemplateColumn>
+    <TemplateColumn Sortable="true" Title="MapName">
+        <InputText @bind="@context.MapName"></InputText>
+    </TemplateColumn>
+    <TemplateColumn Sortable="true" Title="StartType">
+        <InputSelect @bind-Value="@context.StartType" >
+            @foreach (var startType in Enum.GetValues(typeof(GameServerStartType)))
+            {
+                <option value="@startType">@startType</option>
+            }
+        </InputSelect>
+    </TemplateColumn>
+    <TemplateColumn Title="Delete">
+        <button
+            class="btn btn-primary"
+            @onclick="() => DeleteServerType(context)">
+            <span class="bi bi-x"></span>
+        </button>
+    </TemplateColumn>
+</DataGrid>
+
+@code {
+    private DataGrid<GameServerType> grid;
+    private IQueryable<GameServerType> items;
+    private IDisposable? registration;
+    private IDbContextTransaction _transaction;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await DbContext.SaveChangesAsync();
+        _transaction = await DbContext.Database.BeginTransactionAsync();
+        items = DbContext.GameServerTypes;
+        registration = NavigationManager.RegisterLocationChangingHandler(OnLocationChanging);
+    }
+
+    private async Task Save()
+    {
+        await DbContext.SaveChangesAsync();
+        await _transaction.CommitAsync();
+        _transaction = await DbContext.Database.BeginTransactionAsync();
+    }
+
+    private async Task AddServerType()
+    {
+        var newHost = new GameServerType();
+        DbContext.GameServerTypes.Add(newHost);
+        await grid.RefreshDataAsync();
+    }
+    
+    private async Task DeleteServerType(GameServerType type)
+    {
+        await DbContext.GameServerTypes.Where(serverType => serverType == type).ExecuteDeleteAsync();
+        await grid.RefreshDataAsync();
+    }
+    
+    private ValueTask OnLocationChanging(LocationChangingContext context)
+    {
+        if (DbContext.ChangeTracker.HasChanges())
+        {
+            context.PreventNavigation();
+        }
+
+        return ValueTask.CompletedTask;
+    }
+    
+    public void Dispose()
+    {
+        _transaction.Rollback();
+        _transaction.Dispose();
+        registration?.Dispose();
+    }
+
+}
