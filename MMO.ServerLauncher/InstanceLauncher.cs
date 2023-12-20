@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -8,6 +7,13 @@ using MMO.ServerLauncher.Shared;
 using TypedSignalR.Client;
 
 namespace MMO.ServerLauncher;
+
+public record InstanceProcess
+{
+    public Process Process { get; set; }
+    public ushort Port { get; set; }
+    public Guid ServerTypeId { get; set; }
+}
 
 public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<InstanceLauncherOptions> config)
     : IHostedService, IDisposable, IInstanceLauncher
@@ -18,83 +24,104 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
     private IInstanceManager? _instanceManager;
     private IDisposable? _subscription;
 
-    private readonly List<int> runningInstances = new List<int>();
+    private readonly List<InstanceProcess> _runningInstances = new();
 
-    public Task<InstanceInfo?> LaunchInstance(string mapName)
+    public async Task LaunchInstance(Guid serverTypeId, string mapName)
     {
-        logger.LogInformation("OnLaunchInstance");
-        
-        var port = GetAvailablePort(_options.MinPort, _options.MaxPort);
-        var project = _options.IsEditor ? $"\"{_options.PathToProject}\" " : "";
-        var serverArguments = $"{project}{mapName}?listen -server -log -port={port}";
-
-        var proc = new Process
+        if (_instanceManager is not null)
         {
-            StartInfo = new ProcessStartInfo
+            logger.LogInformation("OnLaunchInstance");
+
+            var port = GetAvailablePort(_options.MinPort, _options.MaxPort);
+            var project = _options.IsEditor ? $"\"{_options.PathToProject}\" " : "";
+            var serverArguments = $"{project}{mapName}?listen -server -port={port}";
+
+            var proc = new Process
             {
-                FileName = _options.PathToExecutable,
-                Arguments = Encoding.Default.GetString(Encoding.UTF8.GetBytes(serverArguments)),
-                UseShellExecute = false,
-                RedirectStandardOutput = false,
-                CreateNoWindow = false
-            }
-        };
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = _options.PathToExecutable,
+                    Arguments = Encoding.Default.GetString(Encoding.UTF8.GetBytes(serverArguments)),
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = false,
+                }
+            };
 
-        var successfullyStarted = proc.Start();
-
-        runningInstances.Add(proc.Id);
-
-        return Task.FromResult(
-            successfullyStarted
-                ? new InstanceInfo { Port = port }
-                : null
-        );
-    }
-
-    private void ShutdownAllInstances()
-    {
-        foreach (var instanceProcId in runningInstances)
-        {
-            try
+            var successfullyStarted = proc.Start();
+            if (successfullyStarted)
             {
-                var process = Process.GetProcessById(instanceProcId);
-                process.Kill();
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "Could not stop instance");
+                var instanceInfo = new InstanceProcess{Port = port, ServerTypeId = serverTypeId, Process = proc};
+
+                _runningInstances.Add(instanceInfo);
+                await _instanceManager.InstanceStarted(instanceInfo.ServerTypeId, instanceInfo.Port);
             }
         }
-        runningInstances.Clear();
     }
-    
+
+    public async Task ShutdownInstance(Guid serverTypeId, ushort port)
+    {
+        var instances = _runningInstances
+            .Where(process => process.ServerTypeId == serverTypeId && process.Port == port);
+        foreach (var instance in instances)
+        {
+            await KillInstance(instance);
+        }
+    }
+
+    private async Task ShutdownAllInstances()
+    {
+        foreach (var info in _runningInstances)
+        {
+            await KillInstance(info);
+        }
+    }
+
+    private async Task KillInstance(InstanceProcess info)
+    {
+        try
+        {
+            info.Process.Kill();
+            if (_instanceManager is not null)
+            {
+                await _instanceManager.InstanceStopped(info.ServerTypeId, info.Port);
+            }
+
+            _runningInstances.Remove(info);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Could not stop instance");
+        }
+    }
+
     private void SendHeartbeat(object? state)
     {
         logger.LogInformation("Send Heartbeat");
+
         _instanceManager?.Heartbeat();
     }
 
-    private static int GetAvailablePort(int startingPort, int lastPort)
+    private static ushort GetAvailablePort(ushort startingPort, ushort lastPort)
     {
-        IPEndPoint[] endPoints;
-        List<int> portArray = new List<int>();
+        List<ushort> portArray = [];
 
-        IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
+        var properties = IPGlobalProperties.GetIPGlobalProperties();
         //getting active connections
-        TcpConnectionInformation[] connections = properties.GetActiveTcpConnections();
+        var connections = properties.GetActiveTcpConnections();
         portArray.AddRange(connections
             .Where(n => n.LocalEndPoint.Port >= startingPort && n.LocalEndPoint.Port <= lastPort)
-            .Select(n => n.LocalEndPoint.Port));
+            .Select(n => (ushort)n.LocalEndPoint.Port));
 
         //getting active tcp listeners
-        endPoints = properties.GetActiveTcpListeners();
+        var endPoints = properties.GetActiveTcpListeners();
         portArray.AddRange(endPoints
             .Where(n => n.Port >= startingPort && n.Port <= lastPort)
-            .Select(n => n.Port));
-        
+            .Select(n => (ushort)n.Port));
+
         portArray.Sort();
 
-        for (var i = startingPort; i < UInt16.MaxValue; i++)
+        for (var i = startingPort; i < ushort.MaxValue; i++)
             if (!portArray.Contains(i))
                 return i;
 
@@ -104,10 +131,13 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
     public async Task StartAsync(CancellationToken stoppingToken)
     {
         _connection = new HubConnectionBuilder()
-            .WithUrl(_options.HubUrl)
+            .WithUrl(_options.HubUrl, options =>
+            {
+                //options.Headers["Signature"] = 
+                options.Headers["Authorization"] = $"GameServer {_options.ApiToken}";
+            })
             .WithAutomaticReconnect()
             .Build();
-
         _instanceManager = _connection.CreateHubProxy<IInstanceManager>(cancellationToken: stoppingToken);
 
         _subscription = _connection.Register<IInstanceLauncher>(this);
@@ -117,12 +147,10 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
             TimeSpan.FromSeconds(60));
     }
 
-    public Task StopAsync(CancellationToken stoppingToken)
+    public async Task StopAsync(CancellationToken stoppingToken)
     {
         _timer?.Change(Timeout.Infinite, 0);
-        ShutdownAllInstances();
-
-        return Task.CompletedTask;
+        await ShutdownAllInstances();
     }
 
     public void Dispose()

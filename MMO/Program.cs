@@ -1,31 +1,42 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
-using MMO.Client.Pages;
+using MMO.Authentication;
 using MMO.Components;
 using MMO.Components.Account;
 using MMO.Data;
 using MMO.Game;
 using MMO.Hubs;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
+    .AddInteractiveServerComponents(options =>
+    {
+        options.DetailedErrors = true;
+    })
+    /*.AddInteractiveWebAssemblyComponents()*/;
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingRevalidatingAuthenticationStateProvider>();
 
+builder.Services.TryAddEnumerable(ServiceDescriptor
+    .Singleton<IConfigureOptions<GameServerTokenOptions>, GameServerTokenConfigurationOptions>());
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
     })
+    .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(GameServerTokenDefaults.AuthenticationScheme, _ => { })
     .AddIdentityCookies();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -39,13 +50,19 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
-builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+builder.Services.AddAuthorization(options => 
+    options.AddPolicy("InstanceLauncher", policyBuilder =>
+    {
+        policyBuilder.AuthenticationSchemes = new List<string> { GameServerTokenDefaults.AuthenticationScheme };
+        policyBuilder.RequireClaim(GameServerTokenDefaults.ServerIdClaim);
+    }));
 
+builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+builder.Services.AddMudServices();
 
 builder.Services.AddGame<ApplicationDbContext>();
+builder.Services.AddSingleton<IUserIdProvider, ServerIdProvider>();
 
-
-builder.Services.AddQuickGridEntityFrameworkAdapter();
 /*
 builder.Services.AddAutoMapper((serviceProvider, cfg) =>
 {
@@ -127,8 +144,8 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(Counter).Assembly);
+    //.AddInteractiveWebAssemblyRenderMode()
+    .AddAdditionalAssemblies(typeof(MMO.Client._Imports).Assembly);
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();

@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MMO.Game.Data;
@@ -5,7 +7,13 @@ namespace MMO.Game.Data;
 public class InstanceHost
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public virtual Guid InstanceHostId { get; set; }
+    public Guid InstanceHostId { get; set; }
 
-    public virtual string ConnectionId { get; set; } 
+    [Length(25, 25)]
+    public required string SharedSecret { get; set; }
+
+    public bool Online { get; set; } = false;
+    public DateTime LastHeartbeat { get; set; } = DateTime.Now;
+    [MaxLength(45)]
+    public string? Address { get; set; } = null;
 }

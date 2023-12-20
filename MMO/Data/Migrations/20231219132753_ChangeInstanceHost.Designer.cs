@@ -3,6 +3,7 @@ using System;
 using MMO.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MMO.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231219132753_ChangeInstanceHost")]
+    partial class ChangeInstanceHost
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -117,18 +120,21 @@ namespace MMO.Data.Migrations
 
             modelBuilder.Entity("MMO.Game.Data.GameServer", b =>
                 {
-                    b.Property<Guid>("InstanceHostId")
+                    b.Property<Guid>("GameServerId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
-
-                    b.Property<ushort>("Port")
-                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("GameServerTypeId")
                         .HasColumnType("TEXT");
 
-                    b.HasKey("InstanceHostId", "Port");
+                    b.Property<Guid>("InstanceHostId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("GameServerId");
 
                     b.HasIndex("GameServerTypeId");
+
+                    b.HasIndex("InstanceHostId");
 
                     b.ToTable("GameServers");
                 });
@@ -154,9 +160,6 @@ namespace MMO.Data.Migrations
 
                     b.HasKey("GameServerTypeId");
 
-                    b.HasIndex("Name")
-                        .IsUnique();
-
                     b.ToTable("GameServerTypes");
                 });
 
@@ -165,16 +168,6 @@ namespace MMO.Data.Migrations
                     b.Property<Guid>("InstanceHostId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(45)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LastHeartbeat")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Online")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("SharedSecret")
                         .IsRequired()

@@ -1,0 +1,33 @@
+@page "/Admin/Server"
+@using MMO.Game.Data
+@using MMO.Data
+@using Microsoft.EntityFrameworkCore
+
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Server</PageTitle>
+<h3>Server</h3>
+
+<MudDataGrid
+    @ref="_grid"
+    T="GameServer"
+    Items="_items"
+    Filterable="true">
+    <NoRecordsContent><MudText Typo="Typo.h4">No Server</MudText></NoRecordsContent>
+    <Columns>
+        <PropertyColumn Property="c => c.InstanceHostId" Sortable="true" Groupable="true"/>
+        <PropertyColumn Property="c => c.Port" Sortable="true"/>
+        <PropertyColumn Title="Type Name" Property="c => c.GameServerType.Name" Sortable="true" Groupable="true"/>
+    </Columns>
+</MudDataGrid>
+
+@code {
+
+    private MudDataGrid<GameServer> _grid = null!;
+    private IQueryable<GameServer> _items = null!;
+
+    protected override void OnInitialized()
+    {
+        _items = DbContext.GameServers.Include(server => server.GameServerType).AsNoTrackingWithIdentityResolution();
+    }
+}

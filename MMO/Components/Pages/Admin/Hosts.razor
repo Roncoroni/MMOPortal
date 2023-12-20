@@ -2,41 +2,130 @@
 @using MMO.Game.Data
 @using MMO.Data
 @using Microsoft.EntityFrameworkCore
-@rendermode InteractiveServer
-@inject ApplicationDbContext DbContext
+@using MMO.Authentication
+@using System.Security.Claims
+@using System.Security.Cryptography
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.DataProtection
 
+@inject ApplicationDbContext DbContext
+@inject GameServerTokenHandler handler
+@inject IDataProtectionProvider dp;
+
+<PageTitle>Hosts</PageTitle>
 <h3>Hosts</h3>
 
-<button class="btn btn-primary" @onclick="AddHost">Add Instance Host</button>
+<MudButton
+    Variant="@Variant.Filled"
+    Color="Color.Secondary"
+    OnClick="AddHost">
+    Add Instance Host
+</MudButton>
 
-<DataGrid Items="items"
-          ItemKey="dto => dto.InstanceHostId"
-          @ref="grid">
-    <PropertyColumn Property="@(c => c.InstanceHostId)" Sortable="true"/>
-    <TemplateColumn Title="Delete">
-        <button class="btn btn-primary" @onclick="() => DeleteHost(context)">Delete</button>
-    </TemplateColumn>
-</DataGrid>
+<MudDataGrid
+    @ref="_grid"
+    T="InstanceHost"
+    Items="_items">
+    <NoRecordsContent><MudText Typo="Typo.h4">No Hosts</MudText></NoRecordsContent>
+    <Columns>
+        <PropertyColumn Property="c => c.InstanceHostId" Sortable="true"/>
+        <PropertyColumn Property="c => c.Online">
+            <CellTemplate>
+                <MudIcon Icon="@Icons.Material.Filled.Circle" Color="context.Item.Online ? Color.Success : Color.Error"></MudIcon>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="c => c.LastHeartbeat"></PropertyColumn>
+        <PropertyColumn Property="c => c.Address"></PropertyColumn>
+        <PropertyColumn Property="c => c.SharedSecret" Sortable="true" Hideable="true" HideSmall="true" Hidden="true"/>
+        <TemplateColumn Title="Token" Hideable="true" HideSmall="true" Hidden="true">
+            <CellTemplate>
+
+                @code {
+                    string? _token = null;
+                    string? _passwordInputIcon = Icons.Material.Filled.VisibilityOff;
+
+                    void ShowToken(InstanceHost host)
+                    {
+                        _passwordInputIcon = null;
+                        _token ??= generateToken(host.InstanceHostId.ToString());
+                    }
+
+                }
+
+                <MudTextField
+                    T="string"
+                    @bind-Value="_token"
+                    ReadOnly="true"
+                    Placeholder="*****"
+                    Adornment="Adornment.End"
+                    AdornmentIcon="@_passwordInputIcon"
+                    OnAdornmentClick="() => ShowToken(context.Item)"
+                    AdornmentAriaLabel="Generate Token">
+                </MudTextField>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn>
+            <CellTemplate>
+                <MudStack Row>
+                    <MudIconButton
+                        Icon="@Icons.Material.Rounded.Delete"
+                        OnClick="() => DeleteHost(context.Item)">
+                    </MudIconButton>
+                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync"/>
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
 
 @code {
-    DataGrid<InstanceHost> grid;
-    IQueryable<InstanceHost> items;
+    private MudDataGrid<InstanceHost> _grid = null!;
+    IQueryable<InstanceHost> _items = null!;
 
     protected override void OnInitialized()
     {
-        items = DbContext.InstanceHosts;
+        _items = DbContext.InstanceHosts;
     }
 
     private async Task AddHost()
     {
-        var newHost = new InstanceHost();
-        DbContext.InstanceHosts.Add(newHost);
+        var instance = new InstanceHost { SharedSecret = generateSharedSecret() };
+        DbContext.InstanceHosts.Update(instance);
         await DbContext.SaveChangesAsync();
     }
 
     private async Task DeleteHost(InstanceHost host)
     {
         await DbContext.InstanceHosts.Where(instanceHost => instanceHost == host).ExecuteDeleteAsync();
-        await grid.RefreshDataAsync();
     }
+
+    string generateToken(string serverId)
+    {
+        var identity = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                new List<Claim>
+                {
+                    new(GameServerTokenDefaults.ServerIdClaim, serverId)
+                }, GameServerTokenDefaults.AuthenticationScheme
+            )
+        );
+
+        var serverTokenProtector = new TicketDataFormat(dp.CreateProtector("MMOPortal.Authentication.GameServer", GameServerTokenDefaults.AuthenticationScheme, "Token"));
+        return handler.GenerateToken(serverTokenProtector, identity, GameServerTokenDefaults.AuthenticationScheme, null);
+    }
+
+    string generateSharedSecret()
+    {
+        string allowed = "ABCDEFGHIJKLMONOPQRSTUVWXYZabcdefghijklmonopqrstuvwxyz0123456789";
+        int strlen = 25; // Or whatever
+        char[] randomChars = new char[strlen];
+
+        for (int i = 0; i < strlen; i++)
+        {
+            randomChars[i] = allowed[RandomNumberGenerator.GetInt32(0, allowed.Length)];
+        }
+
+        return new string(randomChars);
+    }
+
 }

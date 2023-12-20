@@ -1,29 +1,30 @@
 @page "/Admin/Characters"
-@rendermode InteractiveServer
-@using Microsoft.AspNetCore.Components.QuickGrid
+
 @using MMO.Data
 @using MMO.Game.Data
 @inject ApplicationDbContext DbContext
 
+<PageTitle>Characters</PageTitle>
 <h3>Character</h3>
 
-<DataGrid 
-    Items="items"
-    @ref="myGrid">
-    <PropertyColumn Property="@(c => c.CharacterId)" Sortable="true"/>
-    <PropertyColumn Property="@(c => c.Name)" Sortable="true"/>
-    <PropertyColumn Property="@(c => c.PositionX)" Sortable="true"/>
-    <PropertyColumn Property="@(c => c.PositionY)" Sortable="true"/>
-    <PropertyColumn Property="@(c => c.PositionZ)" Sortable="true"/>
-    <PropertyColumn Property="@(c => c.Orientation)" Sortable="true"/>
-</DataGrid>
+<MudDataGrid
+    Items="_items">
+    <NoRecordsContent><MudText Typo="Typo.h4">No Characters</MudText></NoRecordsContent>
+    <Columns>
+        <PropertyColumn Property="@(c => c.CharacterId)" Sortable="true"/>
+        <PropertyColumn Property="@(c => c.Name)" Sortable="true"/>
+        <PropertyColumn Property="@(c => c.PositionX)" Sortable="true"/>
+        <PropertyColumn Property="@(c => c.PositionY)" Sortable="true"/>
+        <PropertyColumn Property="@(c => c.PositionZ)" Sortable="true"/>
+        <PropertyColumn Property="@(c => c.Orientation)" Sortable="true"/>
+    </Columns>
+</MudDataGrid>
 
 @code {
-    DataGrid<Character> myGrid;
-    IQueryable<Character> items;
+    IQueryable<Character> _items = null!;
 
     protected override void OnInitialized()
     {
-        items = DbContext.Characters;
+        _items = DbContext.Characters;
     } 
 }

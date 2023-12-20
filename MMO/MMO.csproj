@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid.EntityFrameworkAdapter" Version="8.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.0" />
     <PackageReference Include="SignalRSwaggerGen" Version="4.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.5.0" />
@@ -34,7 +33,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="wwwroot\bootstrap-icons\.DS_Store" />
+    <_ContentIncludedByDefault Remove="wwwroot\bootstrap\bootstrap.min.css" />
+    <_ContentIncludedByDefault Remove="wwwroot\bootstrap\bootstrap.min.css.map" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Components\Pages\Admin\CharacterList.razor" />
+    <AdditionalFiles Include="Components\Pages\Admin\GameServerTypes.razor" />
+    <AdditionalFiles Include="Components\Pages\Admin\Hosts.razor" />
+    <AdditionalFiles Include="Components\Pages\Admin\RoleList.razor" />
+    <AdditionalFiles Include="Components\Pages\Admin\UserList.razor" />
   </ItemGroup>
 
 </Project>
