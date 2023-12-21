@@ -8,13 +8,6 @@ using TypedSignalR.Client;
 
 namespace MMO.ServerLauncher;
 
-public record InstanceProcess
-{
-    public Process Process { get; set; }
-    public ushort Port { get; set; }
-    public Guid ServerTypeId { get; set; }
-}
-
 public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<InstanceLauncherOptions> config)
     : IHostedService, IDisposable, IInstanceLauncher
 {
@@ -23,6 +16,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
     private HubConnection? _connection;
     private IInstanceManager? _instanceManager;
     private IDisposable? _subscription;
+    private CancellationTokenSource _stoppingCts;
 
     private readonly List<InstanceProcess> _runningInstances = new();
 
@@ -34,7 +28,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
 
             var port = GetAvailablePort(_options.MinPort, _options.MaxPort);
             var project = _options.IsEditor ? $"\"{_options.PathToProject}\" " : "";
-            var serverArguments = $"{project}{mapName}?listen -server -port={port}";
+            var serverArguments = $"{project}{mapName}?listen -server -log -port={port}";
 
             var proc = new Process
             {
@@ -44,17 +38,18 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
                     Arguments = Encoding.Default.GetString(Encoding.UTF8.GetBytes(serverArguments)),
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     CreateNoWindow = false,
-                }
+                },
             };
-
+            
             var successfullyStarted = proc.Start();
             if (successfullyStarted)
             {
                 var instanceInfo = new InstanceProcess{Port = port, ServerTypeId = serverTypeId, Process = proc};
 
                 _runningInstances.Add(instanceInfo);
-                await _instanceManager.InstanceStarted(instanceInfo.ServerTypeId, instanceInfo.Port);
+                await _instanceManager.InstanceStarted(instanceInfo.ServerTypeId, instanceInfo.Port).ConfigureAwait(false);
             }
         }
     }
@@ -71,7 +66,8 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
 
     private async Task ShutdownAllInstances()
     {
-        foreach (var info in _runningInstances)
+        var instances = _runningInstances.ToArray();
+        foreach (var info in instances)
         {
             await KillInstance(info);
         }
@@ -84,7 +80,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
             info.Process.Kill();
             if (_instanceManager is not null)
             {
-                await _instanceManager.InstanceStopped(info.ServerTypeId, info.Port);
+                await _instanceManager.InstanceStopped(info.ServerTypeId, info.Port).ConfigureAwait(false);
             }
 
             _runningInstances.Remove(info);
@@ -130,6 +126,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
 
     public async Task StartAsync(CancellationToken stoppingToken)
     {
+        _stoppingCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         _connection = new HubConnectionBuilder()
             .WithUrl(_options.HubUrl, options =>
             {
@@ -138,23 +135,26 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
             })
             .WithAutomaticReconnect()
             .Build();
-        _instanceManager = _connection.CreateHubProxy<IInstanceManager>(cancellationToken: stoppingToken);
+        _instanceManager = _connection.CreateHubProxy<IInstanceManager>(cancellationToken: _stoppingCts.Token);
 
         _subscription = _connection.Register<IInstanceLauncher>(this);
 
-        await _connection.StartAsync(stoppingToken);
+        await _connection.StartAsync(_stoppingCts.Token).ConfigureAwait(false);
         _timer = new Timer(SendHeartbeat, null, TimeSpan.FromSeconds(5),
             TimeSpan.FromSeconds(60));
     }
 
     public async Task StopAsync(CancellationToken stoppingToken)
     {
+        stoppingToken.Register(() => _stoppingCts.Cancel());
         _timer?.Change(Timeout.Infinite, 0);
-        await ShutdownAllInstances();
+        await ShutdownAllInstances().ConfigureAwait(false);
+        await _stoppingCts.CancelAsync().ConfigureAwait(false);
     }
 
     public void Dispose()
     {
+        _stoppingCts.Cancel();
         _timer?.Dispose();
         _subscription?.Dispose();
     }

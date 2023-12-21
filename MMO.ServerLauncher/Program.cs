@@ -1,6 +1,9 @@
 using MMO.ServerLauncher;
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Configuration
+    .AddEnvironmentVariables()
+    .AddUserSecrets<Program>();
 
 builder.Services.Configure<InstanceLauncherOptions>(
     builder.Configuration.GetSection(InstanceLauncherOptions.InstanceLauncher));

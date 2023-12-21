@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
@@ -12,15 +13,13 @@ using MMO.Data;
 using MMO.Game;
 using MMO.Hubs;
 using MudBlazor.Services;
+using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents(options =>
-    {
-        options.DetailedErrors = true;
-    })
+    .AddInteractiveServerComponents(options => { options.DetailedErrors = true; })
     /*.AddInteractiveWebAssemblyComponents()*/;
 
 builder.Services.AddCascadingAuthenticationState();
@@ -39,9 +38,26 @@ builder.Services.AddAuthentication(options =>
     .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(GameServerTokenDefaults.AuthenticationScheme, _ => { })
     .AddIdentityCookies();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+{
+    var config = serviceProvider.GetRequiredService<IConfiguration>();
+    var connectionStringBuilder = new MySqlConnectionStringBuilder(config.GetConnectionString("localdb") ??
+                                                                   throw new InvalidOperationException(
+                                                                       "Connection string 'localdb' not found."));
+    var server = connectionStringBuilder.Server;
+    if (server.Contains(':'))
+    {
+        var parts = server.Split(":");
+        if (parts.Length == 2)
+        {
+            connectionStringBuilder.Server = parts[0];
+            connectionStringBuilder.Port = uint.Parse(parts[1]);
+        }
+    }
+
+    options.UseMySql(connectionStringBuilder.ConnectionString,
+        ServerVersion.AutoDetect(connectionStringBuilder.ConnectionString));
+});
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -50,12 +66,17 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthorization(options => 
+builder.Services.AddAuthorization(options =>
+{
     options.AddPolicy("InstanceLauncher", policyBuilder =>
     {
         policyBuilder.AuthenticationSchemes = new List<string> { GameServerTokenDefaults.AuthenticationScheme };
         policyBuilder.RequireClaim(GameServerTokenDefaults.ServerIdClaim);
-    }));
+    });
+    options.AddPolicy("Admin", policyBuilder =>
+        policyBuilder.RequireRole("Admin")
+    );
+});
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 builder.Services.AddMudServices();
@@ -114,8 +135,11 @@ if (!app.Environment.IsProduction())
     app.UseMigrationsEndPoint();
     app.UseSwagger();
     app.UseSwaggerUI();
-    using (var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope())
+    /*using (var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope())
     {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        dbContext.Database.EnsureCreated();
+
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         if (roleManager?.Roles.Any() == false)
@@ -128,7 +152,7 @@ if (!app.Environment.IsProduction())
             var firstUser = userManager.Users.First();
             await userManager.AddToRoleAsync(firstUser, "Admin");
         }
-    }
+    }*/
 }
 else
 {

@@ -2,15 +2,19 @@
 @using Microsoft.AspNetCore.Identity
 @using MMO.Data
 @using MMO.Game.Data
+@using Microsoft.AspNetCore.Authorization
 @inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext DbContext
 @inject NavigationManager NavigationManager
+@attribute [Authorize("Admin")]
 
 <PageTitle>Users</PageTitle>
 <h3>Users</h3>
 
-<MudDataGrid Items="_users">
-    <NoRecordsContent><MudText Typo="Typo.h4">No Server</MudText></NoRecordsContent>
+<MudDataGrid ShowMenuIcon="true" Items="_users">
+    <NoRecordsContent>
+        <MudText Typo="Typo.h4">No Server</MudText>
+    </NoRecordsContent>
     <Columns>
         <PropertyColumn Property="arg => arg.Id"></PropertyColumn>
         <PropertyColumn Property="arg => arg.UserName"></PropertyColumn>
@@ -21,7 +25,9 @@
                     Size="Size.Small"
                     Variant="Variant.Filled"
                     Color="Color.Primary"
-                    OnClick="@(() => AddCharacter(context.Item))">Add Character</MudButton>
+                    OnClick="@(() => AddCharacter(context.Item))">
+                    Add Character
+                </MudButton>
             </CellTemplate>
         </TemplateColumn>
     </Columns>
@@ -45,7 +51,7 @@
             (user, roles) => new UserListDto
                 (user.Id, user.UserName, user.Email, roles.Select(role => role.Name)));*/
     }
-    
+
     public async Task AddCharacter(ApplicationUser context)
     {
         DbContext.Characters.Add(new Character

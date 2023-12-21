@@ -6,11 +6,14 @@
 @using System.Security.Claims
 @using System.Security.Cryptography
 @using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.DataProtection
 
 @inject ApplicationDbContext DbContext
 @inject GameServerTokenHandler handler
 @inject IDataProtectionProvider dp;
+
+@attribute [Authorize("Admin")]
 
 <PageTitle>Hosts</PageTitle>
 <h3>Hosts</h3>
@@ -22,7 +25,7 @@
     Add Instance Host
 </MudButton>
 
-<MudDataGrid
+<MudDataGrid ShowMenuIcon="true"
     @ref="_grid"
     T="InstanceHost"
     Items="_items">
@@ -36,8 +39,8 @@
         </PropertyColumn>
         <PropertyColumn Property="c => c.LastHeartbeat"></PropertyColumn>
         <PropertyColumn Property="c => c.Address"></PropertyColumn>
-        <PropertyColumn Property="c => c.SharedSecret" Sortable="true" Hideable="true" HideSmall="true" Hidden="true"/>
-        <TemplateColumn Title="Token" Hideable="true" HideSmall="true" Hidden="true">
+        <PropertyColumn Property="c => c.SharedSecret" Sortable="true" Hideable="true" HideSmall="true"/>
+        <TemplateColumn Title="Token" Hideable="true" HideSmall="true">
             <CellTemplate>
 
                 @code {
@@ -89,14 +92,18 @@
 
     private async Task AddHost()
     {
+        await using var transaction = await DbContext.Database.BeginTransactionAsync();
         var instance = new InstanceHost { SharedSecret = generateSharedSecret() };
         DbContext.InstanceHosts.Update(instance);
         await DbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     private async Task DeleteHost(InstanceHost host)
     {
+        await using var transaction = await DbContext.Database.BeginTransactionAsync();
         await DbContext.InstanceHosts.Where(instanceHost => instanceHost == host).ExecuteDeleteAsync();
+        await transaction.CommitAsync();
     }
 
     string generateToken(string serverId)

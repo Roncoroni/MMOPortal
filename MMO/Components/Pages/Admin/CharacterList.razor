@@ -2,12 +2,14 @@
 
 @using MMO.Data
 @using MMO.Game.Data
+@using Microsoft.AspNetCore.Authorization
 @inject ApplicationDbContext DbContext
+@attribute [Authorize("Admin")]
 
 <PageTitle>Characters</PageTitle>
 <h3>Character</h3>
 
-<MudDataGrid
+<MudDataGrid ShowMenuIcon="true"
     Items="_items">
     <NoRecordsContent><MudText Typo="Typo.h4">No Characters</MudText></NoRecordsContent>
     <Columns>

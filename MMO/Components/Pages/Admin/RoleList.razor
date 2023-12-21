@@ -1,14 +1,16 @@
 @page "/Admin/Roles"
 @using Microsoft.AspNetCore.Identity
 @using MMO.Data
+@using Microsoft.AspNetCore.Authorization
 @inject UserManager<ApplicationUser> UserManager
+@attribute [Authorize("Admin")]
 
 <PageTitle>Roles</PageTitle>
 <h3>RoleList</h3>
 
 <h4>@RoleName</h4>
 
-<MudDataGrid Items="Administrators">
+<MudDataGrid ShowMenuIcon="true" Items="Administrators">
     <NoRecordsContent><MudText Typo="Typo.h4">No Admins</MudText></NoRecordsContent>
     <Columns>
         <PropertyColumn Property="@(c => c.Id)" Sortable="true"/>

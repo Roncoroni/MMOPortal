@@ -1,4 +1,6 @@
-﻿@inject NavigationManager NavigationManager
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
 
 <MudNavMenu>
     <MudNavLink Href="/" Match="NavLinkMatch.All">Home</MudNavLink>
@@ -18,15 +20,15 @@
     <AuthorizeView>
         <Authorized>
             <MudNavLink Href="/Account/Manage" Match="NavLinkMatch.All">@context.User.Identity?.Name</MudNavLink>
-            <!--
-<form action="Account/Logout" method="post">
-                        <AntiforgeryToken/>
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl"/>
-                        <button type="submit" class="nav-link">
-                            <i class="bi bi-arrow-bar-left" aria-hidden="true"></i> Logout
-                        </button>
-                    </form>
--->
+            <MudNavLink ActiveClass="" Match="NavLinkMatch.All">
+                <form action="Account/Logout" method="post">
+                    <AntiforgeryToken/>
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl"/>
+                    <button type="submit" class="nav-link">
+                        <i class="bi bi-arrow-bar-left" aria-hidden="true"></i> Logout
+                    </button>
+                </form>
+            </MudNavLink>
         </Authorized>
         <NotAuthorized>
             <MudNavLink Href="/Account/Register" Match="NavLinkMatch.All">Register</MudNavLink>
@@ -34,3 +36,26 @@
         </NotAuthorized>
     </AuthorizeView>
 </MudNavMenu>
+
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+}

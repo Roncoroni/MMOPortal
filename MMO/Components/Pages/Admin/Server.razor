@@ -2,13 +2,15 @@
 @using MMO.Game.Data
 @using MMO.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize("Admin")]
 
 @inject ApplicationDbContext DbContext
 
 <PageTitle>Server</PageTitle>
 <h3>Server</h3>
 
-<MudDataGrid
+<MudDataGrid ShowMenuIcon="true"
     @ref="_grid"
     T="GameServer"
     Items="_items"

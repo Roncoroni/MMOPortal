@@ -2,8 +2,10 @@
 @using MMO.Game.Data
 @using MMO.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
 
 @inject ApplicationDbContext DbContext
+@attribute [Authorize("Admin")]
 
 <PageTitle>Server Types</PageTitle>
 <h3>Server Types</h3>
@@ -15,7 +17,7 @@
     Add Server Type
 </MudButton>
 
-<MudDataGrid
+<MudDataGrid ShowMenuIcon="true"
     @ref="_grid"
     T="GameServerType"
     Items="_items"
@@ -73,8 +75,9 @@
 
     private async Task DeleteServerType(GameServerType type)
     {
+        await using var transaction = await DbContext.Database.BeginTransactionAsync();
         await DbContext.GameServerTypes.Where(serverType => serverType == type).ExecuteDeleteAsync();
-        //await grid.RefreshDataAsync();
+        await transaction.CommitAsync();
     }
 
     private ValueTask OnLocationChanging(LocationChangingContext context)
@@ -89,8 +92,10 @@
 
     async Task CommittedItemChanges(GameServerType item)
     {
+        await using var transaction = await DbContext.Database.BeginTransactionAsync();
         DbContext.GameServerTypes.Update(item);
         await DbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
 }
