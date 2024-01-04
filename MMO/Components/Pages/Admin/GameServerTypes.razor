@@ -1,25 +1,33 @@
-@page "/Admin/GameServerTypes"
+@page "/Admin/GameServerDefinitions"
 @using MMO.Game.Data
 @using MMO.Data
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
 
 @inject ApplicationDbContext DbContext
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @attribute [Authorize("Admin")]
 
-<PageTitle>Server Types</PageTitle>
-<h3>Server Types</h3>
+<PageTitle>Server Definitions</PageTitle>
+<h3>Server Definitions</h3>
 
 <MudButton
     Variant="@Variant.Filled"
     Color="Color.Secondary"
-    OnClick="AddServerType">
-    Add Server Type
+    OnClick="AddWorldServerDefinitions">
+    Add World Server
+</MudButton>
+<MudButton
+    Variant="@Variant.Filled"
+    Color="Color.Primary"
+    OnClick="AddEntryServerDefinitions">
+    Add Entry Server
 </MudButton>
 
 <MudDataGrid ShowMenuIcon="true"
     @ref="_grid"
-    T="GameServerType"
+    T="GameServerDefinition"
     Items="_items"
     ReadOnly="false"
     EditMode="DataGridEditMode.Form"
@@ -27,25 +35,16 @@
     CommittedItemChanges="CommittedItemChanges">
     <NoRecordsContent><MudText Typo="Typo.h4">No Server Types</MudText></NoRecordsContent>
     <Columns>
-        <PropertyColumn Property="c => c.GameServerTypeId" Sortable="true" IsEditable="false"/>
-        <PropertyColumn Property="c => c.Name" Sortable="true"/>
+        <PropertyColumn Property="c => c.GameServerDefinitionId" Sortable="true" IsEditable="false"/>
+        <PropertyColumn Property="c => c.GameServerType" Sortable="true"/>
         <PropertyColumn Property="c => c.MapName" Sortable="true" Groupable="true"/>
-        <PropertyColumn Property="c => c.StartType" Sortable="true" Groupable="true">
-            <EditTemplate>
-                <MudSelect T="GameServerStartType" @bind-Value="context.Item.StartType">
-                    <MudSelectItem Value="@GameServerStartType.OnDemand">@GameServerStartType.OnDemand</MudSelectItem>
-                    <MudSelectItem Value="@GameServerStartType.OnePerNetwork">@GameServerStartType.OnePerNetwork</MudSelectItem>
-                    <MudSelectItem Value="@GameServerStartType.OnePerHost">@GameServerStartType.OnePerHost</MudSelectItem>
-                </MudSelect>
-            </EditTemplate>
-        </PropertyColumn>
         <PropertyColumn Title="Instances" Property="arg => arg.Instances.Count"></PropertyColumn>
         <TemplateColumn>
             <CellTemplate>
                 <MudStack Row>
                     <MudIconButton
                         Icon="@Icons.Material.Rounded.Delete"
-                        OnClick="() => DeleteServerType(context.Item)">
+                        OnClick="() => DeleteServerDefinitions(context.Item)">
                     </MudIconButton>
                     <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync"/>
                 </MudStack>
@@ -56,46 +55,71 @@
 
 @code {
 
-    private MudDataGrid<GameServerType> _grid = null!;
-    private IQueryable<GameServerType> _items = null!;
+    private MudDataGrid<GameServerDefinition> _grid = null!;
+    private IQueryable<GameServerDefinition> _items = null!;
+    private bool _shouldRender = true;
+
+    private string json = ""; 
+
+    protected override bool ShouldRender()
+    {
+        return _shouldRender;
+    }
 
     protected override void OnInitialized()
     {
-        _items = DbContext.GameServerTypes.AsNoTrackingWithIdentityResolution();
+        _items = DbContext.GameServerDefinitions.AsNoTrackingWithIdentityResolution();
     }
 
-    private async Task AddServerType()
+    private async Task AddWorldServerDefinitions()
     {
-        await _grid.SetEditingItemAsync(new GameServerType
+        await _grid.SetEditingItemAsync(new WorldServerDefinition
         {
-            Name = "ServerTypeName",
+            GameServerType = GameServerType.World,
             MapName = "MapName"
         });
     }
-
-    private async Task DeleteServerType(GameServerType type)
+    
+    private async Task AddEntryServerDefinitions()
     {
-        await using var transaction = await DbContext.Database.BeginTransactionAsync();
-        await DbContext.GameServerTypes.Where(serverType => serverType == type).ExecuteDeleteAsync();
-        await transaction.CommitAsync();
-    }
-
-    private ValueTask OnLocationChanging(LocationChangingContext context)
-    {
-        if (DbContext.ChangeTracker.HasChanges())
+        await _grid.SetEditingItemAsync(new EntryServerDefinition
         {
-            context.PreventNavigation();
+            GameServerType = GameServerType.Entry,
+            MapName = "MapName"
+        });
+    }
+    
+    private async Task DeleteServerDefinitions(GameServerDefinition definition)
+    {
+        _shouldRender = false;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            await context.GameServerDefinitions.Where(serverType => serverType == definition).ExecuteDeleteAsync();
+            await transaction.CommitAsync();
         }
-
-        return ValueTask.CompletedTask;
+        finally
+        {
+            _shouldRender = true;
+        }
     }
 
-    async Task CommittedItemChanges(GameServerType item)
+    async Task CommittedItemChanges(GameServerDefinition item)
     {
-        await using var transaction = await DbContext.Database.BeginTransactionAsync();
-        DbContext.GameServerTypes.Update(item);
-        await DbContext.SaveChangesAsync();
-        await transaction.CommitAsync();
+        _shouldRender = false;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            context.GameServerDefinitions.Update(item);
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        finally
+        {
+            _shouldRender = true;
+        }
     }
 
 }

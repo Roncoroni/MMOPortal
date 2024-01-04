@@ -8,3 +8,15 @@ public class ApplicationUser : IdentityUser<Guid>, IGameUser
 {
     public virtual ICollection<Character> Characters { get; set; } = new List<Character>();
 }
+
+public class ApplicationRole : IdentityRole<Guid>
+{
+    public ApplicationRole()
+    {
+    }
+
+    public ApplicationRole(string roleName)
+        : base(roleName)
+    {
+    }
+}

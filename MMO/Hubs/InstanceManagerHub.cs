@@ -17,7 +17,10 @@ public class ServerIdProvider : IUserIdProvider
 }
 
 [Authorize("InstanceLauncher")]
-public class InstanceManagerHub(InstanceManagement management, ILogger<InstanceManagerHub> logger)
+public class InstanceManagerHub(
+    InstanceHostManagement hostManagement, 
+    ILogger<InstanceManagerHub> logger
+    )
     : Hub<IInstanceLauncher>, IInstanceManager
 {
     public override async Task OnConnectedAsync()
@@ -26,47 +29,47 @@ public class InstanceManagerHub(InstanceManagement management, ILogger<InstanceM
         await base.OnConnectedAsync();
         var feature = Context.Features.Get<IHttpConnectionFeature>();
         // here you could get your client remote address
-        var remoteAddress = feature?.RemoteIpAddress;
-        await management.RegisterInstanceLauncher(Guid.Parse(Context.UserIdentifier), remoteAddress);
+        var remoteAddress = feature?.RemoteIpAddress?.MapToIPv4();
+        await hostManagement.RegisterInstanceLauncher(Guid.Parse(Context.UserIdentifier), remoteAddress);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         Debug.Assert(Context.UserIdentifier is not null);
-        await management.UnregisterInstanceLauncher(Guid.Parse(Context.UserIdentifier));
+        await hostManagement.UnregisterInstanceLauncher(Guid.Parse(Context.UserIdentifier));
         await base.OnDisconnectedAsync(exception);
     }
 
     public async Task Heartbeat()
     {
         Debug.Assert(Context.UserIdentifier is not null);
-        await management.Heartbeat(Guid.Parse(Context.UserIdentifier));
+        await hostManagement.InstanceHostHeartbeat(Guid.Parse(Context.UserIdentifier));
 
-        var missingServerTypes = management.MissingInstances(Guid.Parse(Context.UserIdentifier));
+        /*var missingServerTypes = management.MissingInstances(Guid.Parse(Context.UserIdentifier));
         foreach (var serverType in missingServerTypes)
         {
             try
             {
-                await Clients.Caller.LaunchInstance(serverType.GameServerTypeId, serverType.MapName);
+                await StartInstance(serverType);
             }
             catch (Exception e)
             {
                 logger.LogError(e, "Failed to launch new instance for ServerType {ServerTypeName}", serverType.Name);
             }
-        }
+        }*/
     }
 
-    public async Task InstanceStarted(Guid ServerTypeId, ushort Port)
+    public async Task InstanceStarted(Guid ServerId, ushort Port)
     {
         Debug.Assert(Context.UserIdentifier is not null);
-        await management.RegisterInstance(Guid.Parse(Context.UserIdentifier), ServerTypeId, Port);
+        await hostManagement.RegisterInstance(ServerId, Port);
         logger.LogInformation("InstanceStarted Port:{Port}", Port);
     }
 
-    public async Task InstanceStopped(Guid ServerTypeId, ushort Port)
+    public async Task InstanceStopped(Guid ServerId)
     {
         Debug.Assert(Context.UserIdentifier is not null);
-        await management.UnregisterInstance(Guid.Parse(Context.UserIdentifier), ServerTypeId, Port);
-        logger.LogError("InstanceStopped Port:{Port}", Port);
+        await hostManagement.UnregisterInstance(ServerId);
+        logger.LogError("InstanceStopped");
     }
 }

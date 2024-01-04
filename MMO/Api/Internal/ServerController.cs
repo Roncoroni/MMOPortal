@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MMO.Authentication;
 using MMO.Data;
 using MMO.Game.DTO;
 using MMO.Game.Services;
@@ -9,10 +11,24 @@ using MMO.Game.Services;
 namespace MMO.Api.Internal
 {
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize("InstanceLauncher")]
     [ApiController]
     public class ServerController : ControllerBase
     {
+        [HttpGet("heartbeat")]
+        public async Task Heartbeat(
+            [FromServices] ServerManagement serverManagement
+        )
+        {
+            var serverId = User.FindFirstValue(GameServerTokenDefaults.ServerIdClaim);
+            ushort? serverPort = 7777;
+            if (serverId is not null && serverPort is not null)
+            {
+                await serverManagement.InstanceHeartbeat(Guid.Parse(serverId), serverPort.Value);
+            }
+
+        }
+        
         [HttpPost("characters")]
         public async Task<Results<Ok, NotFound>> SaveCharacters(
             CharacterBatchUpdate characterBatchUpdate,

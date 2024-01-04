@@ -7,7 +7,7 @@ namespace MMO.Authentication;
 internal sealed class GameServerTokenConfigurationOptions
     (IDataProtectionProvider dp) : IConfigureNamedOptions<GameServerTokenOptions>
 {
-    private const string _primaryPurpose = "MMOPortal.Authentication.GameServer";
+    internal const string _primaryPurpose = "MMOPortal.Authentication.GameServer";
     
     public void Configure(string? schemeName, GameServerTokenOptions options)
     {

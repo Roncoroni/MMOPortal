@@ -12,7 +12,7 @@ public static class GameServiceCollectionExtensions
         services.AddScoped<CharacterManagement>();
         services.AddScoped<ServerManagement>();
         services.AddScoped<IGameDbContext>(provider => provider.GetRequiredService<TDbContext>());
-        services.AddScoped<InstanceManagement>();
+        services.AddScoped<InstanceHostManagement>();
         return services;
     }
 }

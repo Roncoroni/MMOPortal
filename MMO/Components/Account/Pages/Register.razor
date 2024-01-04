@@ -8,6 +8,7 @@
 @using MMO.Data
 
 @inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<ApplicationRole> RoleManager
 @inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
 @inject IEmailSender<ApplicationUser> EmailSender
@@ -67,6 +68,7 @@
 
     public async Task RegisterUser(EditContext editContext)
     {
+        var firstUser = !UserManager.Users.Any();
         var user = CreateUser();
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
@@ -78,6 +80,14 @@
         {
             identityErrors = result.Errors;
             return;
+        }
+
+        if (firstUser)
+        {
+            if (!await RoleManager.RoleExistsAsync("Admin"))
+                await RoleManager.CreateAsync(new ApplicationRole("Admin"));
+
+            await UserManager.AddToRoleAsync(user, "Admin");
         }
 
         Logger.LogInformation("User created a new account with password.");

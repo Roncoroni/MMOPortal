@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MMO.Data.Migrations
+namespace MMO.Migrations
 {
     /// <inheritdoc />
     public partial class Initial : Migration
@@ -68,19 +68,17 @@ namespace MMO.Data.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "GameServerTypes",
+                name: "GameServerDefinitions",
                 columns: table => new
                 {
-                    GameServerTypeId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    Name = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    GameServerDefinitionId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    GameServerType = table.Column<byte>(type: "tinyint unsigned", nullable: false),
                     MapName = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    StartType = table.Column<byte>(type: "tinyint unsigned", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_GameServerTypes", x => x.GameServerTypeId);
+                    table.PrimaryKey("PK_GameServerDefinitions", x => x.GameServerDefinitionId);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -252,18 +250,21 @@ namespace MMO.Data.Migrations
                 name: "GameServers",
                 columns: table => new
                 {
+                    GameServerId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     InstanceHostId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     Port = table.Column<ushort>(type: "smallint unsigned", nullable: false),
-                    GameServerTypeId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
+                    GameServerDefinitionId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Online = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    LastHeartbeat = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_GameServers", x => new { x.InstanceHostId, x.Port });
+                    table.PrimaryKey("PK_GameServers", x => x.GameServerId);
                     table.ForeignKey(
-                        name: "FK_GameServers_GameServerTypes_GameServerTypeId",
-                        column: x => x.GameServerTypeId,
-                        principalTable: "GameServerTypes",
-                        principalColumn: "GameServerTypeId",
+                        name: "FK_GameServers_GameServerDefinitions_GameServerDefinitionId",
+                        column: x => x.GameServerDefinitionId,
+                        principalTable: "GameServerDefinitions",
+                        principalColumn: "GameServerDefinitionId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_GameServers_InstanceHosts_InstanceHostId",
@@ -317,15 +318,14 @@ namespace MMO.Data.Migrations
                 column: "AccountId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_GameServers_GameServerTypeId",
+                name: "IX_GameServers_GameServerDefinitionId",
                 table: "GameServers",
-                column: "GameServerTypeId");
+                column: "GameServerDefinitionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_GameServerTypes_Name",
-                table: "GameServerTypes",
-                column: "Name",
-                unique: true);
+                name: "IX_GameServers_InstanceHostId",
+                table: "GameServers",
+                column: "InstanceHostId");
         }
 
         /// <inheritdoc />
@@ -359,7 +359,7 @@ namespace MMO.Data.Migrations
                 name: "AspNetUsers");
 
             migrationBuilder.DropTable(
-                name: "GameServerTypes");
+                name: "GameServerDefinitions");
 
             migrationBuilder.DropTable(
                 name: "InstanceHosts");

@@ -3,16 +3,19 @@ using System;
 using MMO.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace MMO.Data.Migrations
+namespace MMO.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231231220947_Initial")]
+    partial class Initial
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -119,47 +122,55 @@ namespace MMO.Data.Migrations
 
             modelBuilder.Entity("MMO.Game.Data.GameServer", b =>
                 {
+                    b.Property<Guid>("GameServerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("GameServerDefinitionId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid>("InstanceHostId")
                         .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("LastHeartbeat")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Online")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<ushort>("Port")
                         .HasColumnType("smallint unsigned");
 
-                    b.Property<Guid>("GameServerTypeId")
-                        .HasColumnType("char(36)");
+                    b.HasKey("GameServerId");
 
-                    b.HasKey("InstanceHostId", "Port");
+                    b.HasIndex("GameServerDefinitionId");
 
-                    b.HasIndex("GameServerTypeId");
+                    b.HasIndex("InstanceHostId");
 
                     b.ToTable("GameServers");
                 });
 
-            modelBuilder.Entity("MMO.Game.Data.GameServerType", b =>
+            modelBuilder.Entity("MMO.Game.Data.GameServerDefinition", b =>
                 {
-                    b.Property<Guid>("GameServerTypeId")
+                    b.Property<Guid>("GameServerDefinitionId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
+
+                    b.Property<byte>("GameServerType")
+                        .HasColumnType("tinyint unsigned");
 
                     b.Property<string>("MapName")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("varchar(40)");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                    b.HasKey("GameServerDefinitionId");
 
-                    b.Property<byte>("StartType")
-                        .HasColumnType("tinyint unsigned");
+                    b.ToTable("GameServerDefinitions");
 
-                    b.HasKey("GameServerTypeId");
+                    b.HasDiscriminator<byte>("GameServerType").IsComplete(true);
 
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("GameServerTypes");
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("MMO.Game.Data.InstanceHost", b =>
@@ -313,6 +324,20 @@ namespace MMO.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MMO.Game.Data.EntryServerDefinition", b =>
+                {
+                    b.HasBaseType("MMO.Game.Data.GameServerDefinition");
+
+                    b.HasDiscriminator().HasValue((byte)1);
+                });
+
+            modelBuilder.Entity("MMO.Game.Data.WorldServerDefinition", b =>
+                {
+                    b.HasBaseType("MMO.Game.Data.GameServerDefinition");
+
+                    b.HasDiscriminator().HasValue((byte)0);
+                });
+
             modelBuilder.Entity("MMO.Game.Data.Character", b =>
                 {
                     b.HasOne("MMO.Data.ApplicationUser", "Account")
@@ -326,19 +351,19 @@ namespace MMO.Data.Migrations
 
             modelBuilder.Entity("MMO.Game.Data.GameServer", b =>
                 {
-                    b.HasOne("MMO.Game.Data.GameServerType", "GameServerType")
+                    b.HasOne("MMO.Game.Data.GameServerDefinition", "GameServerDefinition")
                         .WithMany("Instances")
-                        .HasForeignKey("GameServerTypeId")
+                        .HasForeignKey("GameServerDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MMO.Game.Data.InstanceHost", "InstanceHost")
-                        .WithMany()
+                        .WithMany("GameServers")
                         .HasForeignKey("InstanceHostId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("GameServerType");
+                    b.Navigation("GameServerDefinition");
 
                     b.Navigation("InstanceHost");
                 });
@@ -399,9 +424,14 @@ namespace MMO.Data.Migrations
                     b.Navigation("Characters");
                 });
 
-            modelBuilder.Entity("MMO.Game.Data.GameServerType", b =>
+            modelBuilder.Entity("MMO.Game.Data.GameServerDefinition", b =>
                 {
                     b.Navigation("Instances");
+                });
+
+            modelBuilder.Entity("MMO.Game.Data.InstanceHost", b =>
+                {
+                    b.Navigation("GameServers");
                 });
 #pragma warning restore 612, 618
         }

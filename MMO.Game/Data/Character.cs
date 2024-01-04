@@ -8,10 +8,11 @@ public class Character
 {
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid CharacterId { get; set; }
-    [Required, JsonIgnore]
-    public required Guid AccountId { get; set; }
-    [Required, JsonIgnore]
+    [JsonIgnore]
+    public Guid AccountId { get; set; }
+    [JsonIgnore]
     private IGameUser? _account;
+    [JsonIgnore]
     public IGameUser Account
     {
         set => _account = value;

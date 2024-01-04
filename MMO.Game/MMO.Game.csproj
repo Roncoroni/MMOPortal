@@ -4,6 +4,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <UserSecretsId>8b4dec00-ab0e-4e08-9320-45f00a9097e8</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,6 +13,8 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
+      <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+      <PackageReference Include="System.Linq.Async.Queryable" Version="6.0.1" />
     </ItemGroup>
 
     <ItemGroup>

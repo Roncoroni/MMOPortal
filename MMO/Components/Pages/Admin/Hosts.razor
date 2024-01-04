@@ -84,6 +84,12 @@
 @code {
     private MudDataGrid<InstanceHost> _grid = null!;
     IQueryable<InstanceHost> _items = null!;
+    private bool _shouldRender = true;
+
+    protected override bool ShouldRender()
+    {
+        return _shouldRender;
+    }
 
     protected override void OnInitialized()
     {
@@ -92,18 +98,34 @@
 
     private async Task AddHost()
     {
-        await using var transaction = await DbContext.Database.BeginTransactionAsync();
-        var instance = new InstanceHost { SharedSecret = generateSharedSecret() };
-        DbContext.InstanceHosts.Update(instance);
-        await DbContext.SaveChangesAsync();
-        await transaction.CommitAsync();
+        _shouldRender = false;
+        try
+        {
+            await using var transaction = await DbContext.Database.BeginTransactionAsync();
+            var instance = new InstanceHost { SharedSecret = generateSharedSecret() };
+            DbContext.InstanceHosts.Update(instance);
+            await DbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        finally
+        {
+            _shouldRender = true;
+        }
     }
 
     private async Task DeleteHost(InstanceHost host)
     {
-        await using var transaction = await DbContext.Database.BeginTransactionAsync();
-        await DbContext.InstanceHosts.Where(instanceHost => instanceHost == host).ExecuteDeleteAsync();
-        await transaction.CommitAsync();
+        _shouldRender = false;
+        try
+        {
+            await using var transaction = await DbContext.Database.BeginTransactionAsync();
+            await DbContext.InstanceHosts.Where(instanceHost => instanceHost == host).ExecuteDeleteAsync();
+            await transaction.CommitAsync();
+        }
+        finally
+        {
+            _shouldRender = true;
+        }
     }
 
     string generateToken(string serverId)
@@ -112,12 +134,12 @@
             new ClaimsIdentity(
                 new List<Claim>
                 {
-                    new(GameServerTokenDefaults.ServerIdClaim, serverId)
+                    new(GameServerTokenDefaults.ServerIdClaim, serverId),
                 }, GameServerTokenDefaults.AuthenticationScheme
             )
         );
 
-        var serverTokenProtector = new TicketDataFormat(dp.CreateProtector("MMOPortal.Authentication.GameServer", GameServerTokenDefaults.AuthenticationScheme, "Token"));
+        var serverTokenProtector = new TicketDataFormat(dp.CreateProtector(GameServerTokenConfigurationOptions._primaryPurpose, GameServerTokenDefaults.AuthenticationScheme, "Token"));
         return handler.GenerateToken(serverTokenProtector, identity, GameServerTokenDefaults.AuthenticationScheme, null);
     }
 

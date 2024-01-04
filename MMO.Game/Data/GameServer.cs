@@ -2,9 +2,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MMO.Game.Data;
 
-[PrimaryKey(nameof(InstanceHostId), nameof(Port))]
 public class GameServer
 {
+    public Guid GameServerId { get; set; }
+    
     private InstanceHost? _instanceHost;
     public InstanceHost InstanceHost
     {
@@ -13,14 +14,17 @@ public class GameServer
                ?? throw new InvalidOperationException("Uninitialized property: " + nameof(InstanceHost));
     }
     public required Guid InstanceHostId { get; set; }
-    public required ushort Port { get; set; }
-    private GameServerType? _gameServerType;
+    public ushort Port { get; set; }
+    private GameServerDefinition? _gameServerDefinition;
 
-    public GameServerType GameServerType
+    public GameServerDefinition GameServerDefinition
     {
-        set => _gameServerType = value;
-        get => _gameServerType
-               ?? throw new InvalidOperationException("Uninitialized property: " + nameof(GameServerType));
+        set => _gameServerDefinition = value;
+        get => _gameServerDefinition
+               ?? throw new InvalidOperationException("Uninitialized property: " + nameof(GameServerDefinition));
     }
-    public required Guid GameServerTypeId { get; set; }
+    public required Guid GameServerDefinitionId { get; set; }
+    
+    public bool Online { get; set; } = false;
+    public DateTime LastHeartbeat { get; set; } = DateTime.Now;
 }

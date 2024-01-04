@@ -2,13 +2,13 @@ namespace MMO.ServerLauncher.Shared;
 
 public interface IInstanceLauncher
 {
-    Task LaunchInstance(Guid serverTypeId, string mapName);
-    Task ShutdownInstance(Guid serverTypeId, ushort port);
+    Task LaunchInstance(Guid serverId, string mapName, string token, string serverType);
+    Task ShutdownInstance(Guid serverId);
 }
 
 public interface IInstanceManager
 {
     Task Heartbeat();
-    Task InstanceStarted(Guid serverTypeId, ushort port);
-    Task InstanceStopped(Guid serverTypeId, ushort port);
+    Task InstanceStarted(Guid serverId, ushort port);
+    Task InstanceStopped(Guid serverId);
 }

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -7,10 +8,12 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using MMO.Authentication;
+using MMO.Client;
 using MMO.Components;
 using MMO.Components.Account;
 using MMO.Data;
 using MMO.Game;
+using MMO.Game.Services;
 using MMO.Hubs;
 using MudBlazor.Services;
 using MySqlConnector;
@@ -35,10 +38,9 @@ builder.Services.AddAuthentication(options =>
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
     })
-    .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(GameServerTokenDefaults.AuthenticationScheme, _ => { })
-    .AddIdentityCookies();
+    .AddScheme<GameServerTokenOptions, GameServerTokenHandler>(GameServerTokenDefaults.AuthenticationScheme, _ => { });
 
-builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+Action<IServiceProvider, DbContextOptionsBuilder> method = (serviceProvider, options) =>
 {
     var config = serviceProvider.GetRequiredService<IConfiguration>();
     var connectionStringBuilder = new MySqlConnectionStringBuilder(config.GetConnectionString("localdb") ??
@@ -57,11 +59,17 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
 
     options.UseMySql(connectionStringBuilder.ConnectionString,
         ServerVersion.AutoDetect(connectionStringBuilder.ConnectionString));
-});
+};
+//builder.Services.AddDbContext<ApplicationDbContext>(method);
+
+builder.Services.AddDbContextFactory<ApplicationDbContext>(method);
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddRoles<IdentityRole<Guid>>()
+builder.Services.AddIdentityApiEndpoints<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+/*builder.Services
+    .AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)*/
+    .AddRoles<ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
@@ -83,6 +91,8 @@ builder.Services.AddMudServices();
 
 builder.Services.AddGame<ApplicationDbContext>();
 builder.Services.AddSingleton<IUserIdProvider, ServerIdProvider>();
+builder.Services.AddScoped<InstanceManagerConnection>();
+builder.Services.AddTransient<Lazy<IInstanceConnection>>(provider => new Lazy<IInstanceConnection>(() => provider.GetRequiredService<InstanceManagerConnection>()));
 
 /*
 builder.Services.AddAutoMapper((serviceProvider, cfg) =>
@@ -141,10 +151,10 @@ if (!app.Environment.IsProduction())
         dbContext.Database.EnsureCreated();
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
         if (roleManager?.Roles.Any() == false)
         {
-            await roleManager.CreateAsync(new IdentityRole<Guid>("Admin"));
+            await roleManager.CreateAsync(new ApplicationRole("Admin"));
         }
 
         if (userManager?.Users.Count() == 1)
@@ -156,6 +166,7 @@ if (!app.Environment.IsProduction())
 }
 else
 {
+    app.UseResponseCompression();
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
@@ -173,6 +184,27 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+var group = app.MapGroup("/api/account");
+group.MapIdentityApi<ApplicationUser>();
+group.MapGet("/game/info",
+    async Task<Results<Ok<UserInfo>, ValidationProblem, NotFound>> (ClaimsPrincipal claimsPrincipal,
+        UserManager<ApplicationUser> userManager) =>
+    {
+        if (await userManager.GetUserAsync(claimsPrincipal) is not { } user)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(new UserInfo
+        {
+            UserId = user.Id.ToString(),
+            Email = user.Email ?? "",
+            Roles = await userManager.GetRolesAsync(user),
+
+        });
+    }).RequireAuthorization();
+
 app.MapControllers();
 
 app.MapHub<InstanceManagerHub>("hubs/instance");

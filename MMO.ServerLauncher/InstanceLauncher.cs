@@ -20,7 +20,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
 
     private readonly List<InstanceProcess> _runningInstances = new();
 
-    public async Task LaunchInstance(Guid serverTypeId, string mapName)
+    public async Task LaunchInstance(Guid serverId, string mapName, string token, string serverType)
     {
         if (_instanceManager is not null)
         {
@@ -28,7 +28,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
 
             var port = GetAvailablePort(_options.MinPort, _options.MaxPort);
             var project = _options.IsEditor ? $"\"{_options.PathToProject}\" " : "";
-            var serverArguments = $"{project}{mapName}?listen -server -log -port={port}";
+            var serverArguments = $"{project}{mapName}?listen -server -log -port={port} -ini:Engine:[MMOServer]:ApiToken={token} -servertype={serverType}";
 
             var proc = new Process
             {
@@ -46,18 +46,18 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
             var successfullyStarted = proc.Start();
             if (successfullyStarted)
             {
-                var instanceInfo = new InstanceProcess{Port = port, ServerTypeId = serverTypeId, Process = proc};
+                var instanceInfo = new InstanceProcess{Port = port, ServerId = serverId, Process = proc};
 
                 _runningInstances.Add(instanceInfo);
-                await _instanceManager.InstanceStarted(instanceInfo.ServerTypeId, instanceInfo.Port).ConfigureAwait(false);
+                await _instanceManager.InstanceStarted(instanceInfo.ServerId, instanceInfo.Port);//.ConfigureAwait(false);
             }
         }
     }
 
-    public async Task ShutdownInstance(Guid serverTypeId, ushort port)
+    public async Task ShutdownInstance(Guid serverId)
     {
         var instances = _runningInstances
-            .Where(process => process.ServerTypeId == serverTypeId && process.Port == port);
+            .Where(process => process.ServerId == serverId);
         foreach (var instance in instances)
         {
             await KillInstance(instance);
@@ -80,7 +80,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
             info.Process.Kill();
             if (_instanceManager is not null)
             {
-                await _instanceManager.InstanceStopped(info.ServerTypeId, info.Port).ConfigureAwait(false);
+                await _instanceManager.InstanceStopped(info.ServerId).ConfigureAwait(false);
             }
 
             _runningInstances.Remove(info);
@@ -115,6 +115,12 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
             .Where(n => n.Port >= startingPort && n.Port <= lastPort)
             .Select(n => (ushort)n.Port));
 
+        //getting active udp listeners
+        endPoints = properties.GetActiveUdpListeners();
+        portArray.AddRange(endPoints
+            .Where(n => n.Port >= startingPort)
+            .Select(n => (ushort)n.Port));
+        
         portArray.Sort();
 
         for (var i = startingPort; i < ushort.MaxValue; i++)

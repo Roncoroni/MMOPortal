@@ -16,4 +16,6 @@ public class InstanceHost
     public DateTime LastHeartbeat { get; set; } = DateTime.Now;
     [MaxLength(45)]
     public string? Address { get; set; } = null;
+    
+    public IList<GameServer> GameServers { get; set; }
 }
