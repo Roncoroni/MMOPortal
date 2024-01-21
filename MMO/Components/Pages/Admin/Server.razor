@@ -19,14 +19,15 @@
         <MudText Typo="Typo.h4">No Server</MudText>
     </NoRecordsContent>
     <Columns>
-        <PropertyColumn Property="c => c.InstanceHostId" Sortable="true" Groupable="true"/>
+        <PropertyColumn Property="c => c.GameServerId" Sortable="true" Groupable="true"/>
+        <PropertyColumn Property="c => c.InstanceHost.Address" Sortable="true" Groupable="true"/>
         <PropertyColumn Property="c => c.Port" Sortable="true"/>
         <PropertyColumn Property="c => c.Online">
             <CellTemplate>
                 <MudIcon Icon="@Icons.Material.Filled.Circle" Color="context.Item.Online ? Color.Success : Color.Error"></MudIcon>
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="c => c.LastHeartbeat"></PropertyColumn>
+        <PropertyColumn Property="c => c.LastHeartbeat.ToLocalTime()"></PropertyColumn>
         <PropertyColumn Title="Type" Property="c => c.GameServerDefinition.GameServerType" Sortable="true" Groupable="true"/>
         <PropertyColumn Title="Map" Property="c => c.GameServerDefinition.MapName" Sortable="true" Groupable="true"/>
     </Columns>
@@ -39,7 +40,10 @@
 
     protected override void OnInitialized()
     {
-        _items = DbContext.GameServers.Include(server => server.GameServerDefinition).AsNoTrackingWithIdentityResolution();
+        _items = DbContext.GameServers
+            .Include(server => server.GameServerDefinition)
+            .Include(server => server.InstanceHost)
+            .AsNoTrackingWithIdentityResolution();
     }
 
 }

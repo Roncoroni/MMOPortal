@@ -1,7 +1,11 @@
 using System.Security.Claims;
+using Humanizer;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -92,7 +96,8 @@ builder.Services.AddMudServices();
 builder.Services.AddGame<ApplicationDbContext>();
 builder.Services.AddSingleton<IUserIdProvider, ServerIdProvider>();
 builder.Services.AddScoped<InstanceManagerConnection>();
-builder.Services.AddTransient<Lazy<IInstanceConnection>>(provider => new Lazy<IInstanceConnection>(() => provider.GetRequiredService<InstanceManagerConnection>()));
+builder.Services.AddTransient<Lazy<IInstanceConnection>>(provider =>
+    new Lazy<IInstanceConnection>(() => provider.GetRequiredService<InstanceManagerConnection>()));
 
 /*
 builder.Services.AddAutoMapper((serviceProvider, cfg) =>
@@ -201,12 +206,19 @@ group.MapGet("/game/info",
             UserId = user.Id.ToString(),
             Email = user.Email ?? "",
             Roles = await userManager.GetRolesAsync(user),
-
         });
     }).RequireAuthorization();
 
 app.MapControllers();
 
 app.MapHub<InstanceManagerHub>("hubs/instance");
+app.MapGet("/ValidateToken/{token}", (
+    string token,
+    [FromServices] IDataProtectionProvider dp) =>
+{
+    var serverTokenProtector = new TicketDataFormat(dp.CreateProtector(GameServerTokenConfigurationOptions._primaryPurpose, GameServerTokenDefaults.AuthenticationScheme, "Token"));
+    var ticket = serverTokenProtector.Unprotect(token);
+    return ticket?.Principal.Claims.Humanize();
+});
 
 app.Run();

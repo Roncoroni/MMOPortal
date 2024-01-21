@@ -13,7 +13,7 @@ public class InstanceHost
     public required string SharedSecret { get; set; }
 
     public bool Online { get; set; } = false;
-    public DateTime LastHeartbeat { get; set; } = DateTime.Now;
+    public DateTime LastHeartbeat { get; set; } = DateTime.UtcNow;
     [MaxLength(45)]
     public string? Address { get; set; } = null;
     

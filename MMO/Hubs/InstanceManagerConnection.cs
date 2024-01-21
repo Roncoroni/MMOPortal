@@ -12,13 +12,15 @@ namespace MMO.Hubs;
 public class InstanceManagerConnection(
     IHubContext<InstanceManagerHub, IInstanceLauncher> hubContext,
     GameServerTokenHandler handler,
-    IDataProtectionProvider dp
+    IDataProtectionProvider dp,
+    ILogger<InstanceManagerConnection> logger
 ) : IInstanceConnection
 {
     public async Task StartInstance(GameServer server, GameServerDefinition definition)
     {
         var serverId = server.GameServerId.ToString();
         var hostId = server.InstanceHostId.ToString();
+        logger.LogInformation("GUID:{ServerId}", serverId);
         var identity = new ClaimsPrincipal(
             new ClaimsIdentity(
                 new List<Claim>

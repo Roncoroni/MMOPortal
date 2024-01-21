@@ -37,7 +37,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.Circle" Color="context.Item.Online ? Color.Success : Color.Error"></MudIcon>
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="c => c.LastHeartbeat"></PropertyColumn>
+        <PropertyColumn Property="c => c.LastHeartbeat.ToLocalTime()"></PropertyColumn>>
         <PropertyColumn Property="c => c.Address"></PropertyColumn>
         <PropertyColumn Property="c => c.SharedSecret" Sortable="true" Hideable="true" HideSmall="true"/>
         <TemplateColumn Title="Token" Hideable="true" HideSmall="true">

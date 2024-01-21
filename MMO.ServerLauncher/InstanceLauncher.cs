@@ -147,7 +147,7 @@ public class InstanceLauncher(ILogger<InstanceLauncher> logger, IOptions<Instanc
 
         await _connection.StartAsync(_stoppingCts.Token).ConfigureAwait(false);
         _timer = new Timer(SendHeartbeat, null, TimeSpan.FromSeconds(5),
-            TimeSpan.FromSeconds(60));
+            TimeSpan.FromSeconds(15));
     }
 
     public async Task StopAsync(CancellationToken stoppingToken)

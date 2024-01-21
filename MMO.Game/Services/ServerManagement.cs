@@ -10,21 +10,34 @@ public class ServerManagement(
     ILogger<ServerManagement> logger,
     IGameDbContext dbContext)
 {
-    public async Task InstanceHeartbeat(Guid serverId, ushort serverPort)
+    public async Task InstanceHeartbeat(Guid serverId)
     {
-        /*await dbContext.GameServers.Where(server => 
-                server.InstanceHostId == serverId
-                && server.Port == serverPort
+        await dbContext.GameServers.Where(server =>
+                server.GameServerId == serverId
             )
-            .ExecuteUpdateAsync(calls => 
-                calls.SetProperty(source => source.));*/
+            .ExecuteUpdateAsync(calls =>
+                calls
+                    .SetProperty(source => source.Online, true)
+                    .SetProperty(source => source.LastHeartbeat, DateTime.UtcNow));
     }
+
+    public async Task WasKilled(Guid serverId)
+    {
+        await dbContext.GameServers.Where(server =>
+                server.GameServerId == serverId
+            )
+            .ExecuteUpdateAsync(calls =>
+                calls
+                    .SetProperty(source => source.Online, false)
+                    .SetProperty(source => source.LastHeartbeat, DateTime.UtcNow));
+    }
+
     public async Task SaveCharacters(CharacterBatchUpdate characterBatchUpdate)
     {
         var dbSet = dbContext.Characters;
 
         var debugInfo = JsonSerializer.Serialize(characterBatchUpdate.Batch);
-        
+
         logger.LogInformation("SaveCharacters: {DebugInfo}", debugInfo);
 
         foreach (var update in characterBatchUpdate.Batch)
@@ -38,25 +51,5 @@ public class ServerManagement(
                     .SetProperty(character => character.Orientation, update.Rotation)
                 );
         }
-/*
-        foreach (var characterUpdate in characterBatchUpdate.Batch)
-        {
-            var updated = dbSet.Persist(mapper).InsertOrUpdate(characterUpdate);
-            if (updated != null)
-            {
-                logger.LogInformation("Update succeeded: {}", updated.ToString());
-            }
-            else
-            {
-                logger.LogWarning("Update failed");
-            }
-        }*/
-
-/*
-            await Task.WhenAll(
-                characterBatchUpdate.Batch
-                    .Select(update => dbSet.Persist(mapper).InsertOrUpdateAsync(update)));
-*/
-        //await dbContext.SaveChangesAsync();
     }
 }

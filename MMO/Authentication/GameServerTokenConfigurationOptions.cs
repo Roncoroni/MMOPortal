@@ -18,7 +18,7 @@ internal sealed class GameServerTokenConfigurationOptions
 
         options.ServerTokenProtector = new TicketDataFormat(dp.CreateProtector(_primaryPurpose, schemeName, "Token"));
     }
-    
+
     public void Configure(GameServerTokenOptions options)
     {
         throw new NotImplementedException();

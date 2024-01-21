@@ -26,5 +26,5 @@ public class GameServer
     public required Guid GameServerDefinitionId { get; set; }
     
     public bool Online { get; set; } = false;
-    public DateTime LastHeartbeat { get; set; } = DateTime.Now;
+    public DateTime LastHeartbeat { get; set; } = DateTime.UtcNow;
 }

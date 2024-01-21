@@ -17,14 +17,27 @@ namespace MMO.Api.Internal
     {
         [HttpGet("heartbeat")]
         public async Task Heartbeat(
+            [FromServices] ServerManagement serverManagement,
+            [FromServices] ILogger<ServerController> logger)
+        {
+            var serverId = User.FindFirstValue(GameServerTokenDefaults.ServerIdClaim);
+            logger.LogInformation("ServerID: {ServerId}", serverId ?? "unknown");
+            if (serverId is not null)
+            {
+                await serverManagement.InstanceHeartbeat(Guid.Parse(serverId));
+            }
+
+        }
+        
+        [HttpGet("notify/shutdown")]
+        public async Task NotifyShutdown(
             [FromServices] ServerManagement serverManagement
         )
         {
             var serverId = User.FindFirstValue(GameServerTokenDefaults.ServerIdClaim);
-            ushort? serverPort = 7777;
-            if (serverId is not null && serverPort is not null)
+            if (serverId is not null)
             {
-                await serverManagement.InstanceHeartbeat(Guid.Parse(serverId), serverPort.Value);
+                await serverManagement.WasKilled(Guid.Parse(serverId));
             }
 
         }

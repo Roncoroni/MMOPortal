@@ -1,20 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 using MMO.Game.Data;
-using MMO.ServerLauncher.Shared;
 
 namespace MMO.Game.Services;
-
-public interface IInstanceConnection
-{
-    Task StartInstance(GameServer server, GameServerDefinition definition);
-}
 
 public class InstanceHostManagement(
     ILogger<InstanceHostManagement> logger,
@@ -29,7 +20,7 @@ public class InstanceHostManagement(
             .Where(host => host.InstanceHostId == id)
             .ExecuteUpdateAsync(calls =>
                 calls.SetProperty(host => host.Online, true)
-                    .SetProperty(host => host.LastHeartbeat, DateTime.Now)
+                    .SetProperty(host => host.LastHeartbeat, DateTime.UtcNow)
                     .SetProperty(host => host.Address, host => host.Address ?? address));
     }
 
@@ -40,7 +31,7 @@ public class InstanceHostManagement(
             .Where(host => host.InstanceHostId == id)
             .ExecuteUpdateAsync(calls =>
                 calls.SetProperty(host => host.Online, false)
-                    .SetProperty(host => host.LastHeartbeat, DateTime.Now));
+                    .SetProperty(host => host.LastHeartbeat, DateTime.UtcNow));
         await dbContext.GameServers
             .Where(server => server.InstanceHost.InstanceHostId == id)
             .ExecuteDeleteAsync();
@@ -52,7 +43,7 @@ public class InstanceHostManagement(
         await dbContext.InstanceHosts
             .Where(host => host.InstanceHostId == id)
             .ExecuteUpdateAsync(calls =>
-                calls.SetProperty(host => host.LastHeartbeat, DateTime.Now));
+                calls.SetProperty(host => host.LastHeartbeat, DateTime.UtcNow));
     }
 
     public async Task RegisterInstance(Guid serverId, ushort port)
@@ -60,10 +51,10 @@ public class InstanceHostManagement(
         await dbContext.GameServers
             .Where(server => server.GameServerId == serverId)
             .ExecuteUpdateAsync(
-            calls => calls
-                .SetProperty(server => server.Online, true)
-                .SetProperty(server => server.Port, port)
-                .SetProperty(server => server.LastHeartbeat, DateTime.Now));
+                calls => calls
+                    .SetProperty(server => server.Online, false)
+                    .SetProperty(server => server.Port, port)
+                    .SetProperty(server => server.LastHeartbeat, DateTime.UtcNow));
 
         var gameServer = await dbContext.GameServers
             .Include(server => server.InstanceHost)
@@ -96,13 +87,17 @@ public class InstanceHostManagement(
         }
         return ConstructUrl(entryServer.InstanceHost.Address ?? "", entryServer.Port);
     }
-    
+
+    public Task<string> GetWorldServer()
+    {
+        return GetWorldServer(Guid.Empty, Guid.Empty);
+    }
     public async Task<string> GetWorldServer(Guid AccountId, Guid CharacterId)
     {
         var worldServerQuery = dbContext.GameServers
             .Include(server => server.GameServerDefinition)
             .Include(server => server.InstanceHost)
-            .Where(server => server.GameServerDefinition.GameServerType == GameServerType.World);
+            .Where(server => server.GameServerDefinition.GameServerType == GameServerType.World && server.Online);
         
         var worldServer = await worldServerQuery.FirstOrDefaultAsync();
 
@@ -121,14 +116,14 @@ public class InstanceHostManagement(
 
     private async Task<GameServer> StartInstance(GameServerType serverType)
     {
-        var offset = DateTime.Now.AddMinutes(-5);
+        var offset = DateTime.UtcNow.AddMinutes(-5);
         var serverDefinition = await dbContext.GameServerDefinitions.AsNoTracking().FirstAsync(definition =>
             definition.GameServerType == serverType);
         
         var gameServer = await dbContext.GameServers.AsNoTracking()
             .Include(server => server.InstanceHost)
             .Where(server => server.InstanceHost.Online && 
-                             (!server.Online || server.LastHeartbeat < offset))
+                             (!server.Online && server.LastHeartbeat < offset))
             .FirstOrDefaultAsync();
         EntityEntry<GameServer> entry;
         
@@ -145,13 +140,15 @@ public class InstanceHostManagement(
                 InstanceHostId = host.InstanceHostId,
                 GameServerDefinitionId = serverDefinition.GameServerDefinitionId
             };
-           entry = dbContext.GameServers.Add(tempGameServer);
-           await dbContext.SaveChangesAsync();
-           gameServer = tempGameServer;
+            entry = dbContext.GameServers.Add(tempGameServer);
+            await dbContext.SaveChangesAsync();
+            gameServer = tempGameServer;
+            logger.LogInformation("New GameServer GUID:{ServerId} ({Alt})", entry.Entity.GameServerId, gameServer.GameServerId);
         }
         else
         {
             entry = dbContext.Entry(gameServer);
+            logger.LogInformation("Reuse GameServer GUID:{ServerId} ({Alt})", entry.Entity.GameServerId, gameServer.GameServerId);
         }
         
         await instanceConnection.Value.StartInstance(gameServer, serverDefinition);
