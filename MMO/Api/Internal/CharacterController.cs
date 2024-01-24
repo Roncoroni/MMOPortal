@@ -37,6 +37,12 @@ namespace MMO.Api.Internal
             return characterManagement.GetCharacter(accountId);
         }
         
+        [HttpGet("{characterId:guid}")]
+        public Task<Character> GetCharacter([FromRoute]Guid accountId, [FromRoute]Guid characterId, CharacterManagement characterManagement)
+        {
+            return characterManagement.GetCharacter(accountId, characterId);
+        }
+        
         [HttpPost("character")]
         public async Task<Results<Ok, NotFound>> GetRecentUsedCharacter([FromRoute]Guid accountId, CharacterUpdate characterUpdate, CharacterManagement characterManagement)
         {

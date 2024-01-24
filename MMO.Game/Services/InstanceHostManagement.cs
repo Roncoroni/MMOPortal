@@ -88,10 +88,6 @@ public class InstanceHostManagement(
         return ConstructUrl(entryServer.InstanceHost.Address ?? "", entryServer.Port);
     }
 
-    public Task<string> GetWorldServer()
-    {
-        return GetWorldServer(Guid.Empty, Guid.Empty);
-    }
     public async Task<string> GetWorldServer(Guid AccountId, Guid CharacterId)
     {
         var worldServerQuery = dbContext.GameServers
@@ -106,12 +102,12 @@ public class InstanceHostManagement(
             worldServer = await StartInstance(GameServerType.World);
         }
 
-        return ConstructUrl(worldServer.InstanceHost.Address ?? "", worldServer.Port);
+        return ConstructUrl(worldServer.InstanceHost.Address ?? "", worldServer.Port, CharacterId.ToString());
     }
 
-    private static string ConstructUrl(string address, ushort port)
+    private static string ConstructUrl(string address, ushort port, string? data = null)
     {
-        return $"{address}:{port}";
+        return data is null ? $"{address}:{port}" : $"{address}:{port}?data={data}";
     }
 
     private async Task<GameServer> StartInstance(GameServerType serverType)

@@ -18,6 +18,11 @@ public class CharacterManagement(
     {
         return dbContext.Characters.SingleAsync(character => character.AccountId == AccountId);
     }
+    
+    public Task<Character> GetCharacter(Guid AccountId, Guid CharacterId)
+    {
+        return dbContext.Characters.SingleAsync(character => character.AccountId == AccountId && character.CharacterId == CharacterId);
+    }
 
     public async Task<bool> UpdateCharacter(Guid AccountId, CharacterUpdate characterUpdate)
     {
