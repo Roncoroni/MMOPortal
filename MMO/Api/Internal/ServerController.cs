@@ -31,15 +31,16 @@ namespace MMO.Api.Internal
         
         [HttpGet("notify/shutdown")]
         public async Task NotifyShutdown(
-            [FromServices] ServerManagement serverManagement
+            [FromServices] ServerManagement serverManagement,
+            [FromServices] ILogger<ServerController> logger
         )
         {
             var serverId = User.FindFirstValue(GameServerTokenDefaults.ServerIdClaim);
+            logger.LogInformation("Server shutdown: {ServerId}", serverId ?? "unknown");
             if (serverId is not null)
             {
                 await serverManagement.WasKilled(Guid.Parse(serverId));
             }
-
         }
         
         [HttpPost("characters")]

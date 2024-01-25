@@ -16,7 +16,7 @@ public class CharacterManagement(
 
     public Task<Character> GetCharacter(Guid AccountId)
     {
-        return dbContext.Characters.SingleAsync(character => character.AccountId == AccountId);
+        return dbContext.Characters.FirstAsync(character => character.AccountId == AccountId);
     }
     
     public Task<Character> GetCharacter(Guid AccountId, Guid CharacterId)
