@@ -9,7 +9,18 @@ public class CharacterManagement(
     ILogger<CharacterManagement> logger,
     IGameDbContext dbContext)
 {
-    public IQueryable<Character> GetCharacters(Guid AccountId)
+    public async Task<bool> CreateCharacter(Guid AccountId, string CharacterName)
+    {
+        await dbContext.Characters.AddAsync(new Character
+        {
+            Name = CharacterName,
+            AccountId = AccountId,
+        });
+        await dbContext.SaveChangesAsync();
+        return true;
+    }
+    
+    public IQueryable<Character> GetCharacterList(Guid AccountId)
     {
         return dbContext.Characters.Where(character => character.AccountId == AccountId);
     }
@@ -24,12 +35,10 @@ public class CharacterManagement(
         return dbContext.Characters.SingleAsync(character => character.AccountId == AccountId && character.CharacterId == CharacterId);
     }
 
-    public async Task<bool> UpdateCharacter(Guid AccountId, CharacterUpdate characterUpdate)
+    public async Task<bool> UpdateCharacter(Guid AccountId, Guid CharacterId, CharacterUpdate characterUpdate)
     {
-        var characterSet = dbContext.Characters;
-
-        var count = await characterSet.Where(character => character.AccountId == AccountId &&
-                                                          character.CharacterId == characterUpdate.CharacterId)
+        var count = await dbContext.Characters.Where(character => character.AccountId == AccountId &&
+                                                                  character.CharacterId == CharacterId)
             .ExecuteUpdateAsync(calls => calls
                 .SetProperty(character => character.PositionX, characterUpdate.PositionX)
                 .SetProperty(character => character.PositionY, characterUpdate.PositionY)
@@ -37,5 +46,13 @@ public class CharacterManagement(
                 .SetProperty(character => character.Orientation, characterUpdate.Rotation)
             );
         return count > 0;
+    }
+    
+    public async Task<bool> DeleteCharacter(Guid AccountId, Guid CharacterId)
+    {
+        await dbContext.Characters
+            .Where(character => character.CharacterId == CharacterId && character.AccountId == AccountId)
+            .ExecuteDeleteAsync();
+        return true;
     }
 }

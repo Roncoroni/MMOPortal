@@ -1,5 +1,7 @@
 namespace MMO.Game.DTO;
 
-public record CharacterUpdate(Guid CharacterId, double PositionX, double PositionY, double PositionZ, double Rotation);
+public record CharacterCreate(string CharacterName);
 
-public record CharacterBatchUpdate(IList<CharacterUpdate> Batch);
+public record CharacterUpdate(double PositionX, double PositionY, double PositionZ, double Rotation);
+
+public record CharacterBatchUpdate(IDictionary<Guid, CharacterUpdate> Batch);

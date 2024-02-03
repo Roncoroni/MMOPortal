@@ -40,10 +40,10 @@ public class ServerManagement(
 
         logger.LogInformation("SaveCharacters: {DebugInfo}", debugInfo);
 
-        foreach (var update in characterBatchUpdate.Batch)
+        foreach (var (characterId, update) in characterBatchUpdate.Batch)
         {
             await dbSet
-                .Where(character => character.CharacterId == update.CharacterId)
+                .Where(character => character.CharacterId == characterId)
                 .ExecuteUpdateAsync(calls => calls
                     .SetProperty(character => character.PositionX, update.PositionX)
                     .SetProperty(character => character.PositionY, update.PositionY)

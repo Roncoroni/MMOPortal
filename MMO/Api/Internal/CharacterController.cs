@@ -11,12 +11,25 @@ namespace MMO.Api.Internal
     [Route("api/[controller]/{accountId:guid}")]
     [Authorize("InstanceLauncher")]
     [ApiController]
-    public class CharacterController : ControllerBase
+    public class CharacterController(CharacterManagement characterManagement) : ControllerBase
     {
-        [HttpGet("characters")]
-        public IEnumerable<Character> GetCharacters([FromRoute]Guid accountId, CharacterManagement characterManagement)
+        [HttpGet]
+        public IEnumerable<Character> GetCharacterList([FromRoute]Guid accountId)
         {
-            return characterManagement.GetCharacters(accountId);
+            return characterManagement.GetCharacterList(accountId);
+        }
+        
+        [HttpGet("last")]
+        public Task<Character> GetRecentUsedCharacter([FromRoute]Guid accountId)
+        {
+            return characterManagement.GetCharacter(accountId);
+        }
+
+        [HttpPost("create")]
+        public async Task<Results<Created, BadRequest>> CreateCharacter([FromRoute]Guid accountId, CharacterCreate CreateParams)
+        {
+            var success = await characterManagement.CreateCharacter(accountId, CreateParams.CharacterName);
+            return success ? TypedResults.Created() : TypedResults.BadRequest();
         }
         
         [HttpGet("{characterId:guid}/world")]
@@ -31,22 +44,24 @@ namespace MMO.Api.Internal
             return new(url);
         }
         
-        [HttpGet("character")]
-        public Task<Character> GetRecentUsedCharacter([FromRoute]Guid accountId, CharacterManagement characterManagement)
-        {
-            return characterManagement.GetCharacter(accountId);
-        }
-        
         [HttpGet("{characterId:guid}")]
-        public Task<Character> GetCharacter([FromRoute]Guid accountId, [FromRoute]Guid characterId, CharacterManagement characterManagement)
+        public Task<Character> GetCharacter([FromRoute]Guid accountId, [FromRoute]Guid characterId)
         {
             return characterManagement.GetCharacter(accountId, characterId);
         }
         
-        [HttpPost("character")]
-        public async Task<Results<Ok, NotFound>> GetRecentUsedCharacter([FromRoute]Guid accountId, CharacterUpdate characterUpdate, CharacterManagement characterManagement)
+        [HttpPost("{characterId:guid}")]
+        public async Task<Results<Ok, NotFound>> UpdateCharacter([FromRoute]Guid accountId, [FromRoute]Guid characterId, CharacterUpdate characterUpdate)
         {
-            var success = await characterManagement.UpdateCharacter(accountId, characterUpdate);
+            var success = await characterManagement.UpdateCharacter(accountId, characterId, characterUpdate);
+            return success ? TypedResults.Ok() : TypedResults.NotFound();
+        }
+        
+        
+        [HttpDelete("{characterId:guid}")]
+        public async Task<Results<Ok, NotFound>> DeleteCharacter([FromRoute]Guid accountId, [FromRoute]Guid characterId)
+        {
+            var success = await characterManagement.DeleteCharacter(accountId, characterId);
             return success ? TypedResults.Ok() : TypedResults.NotFound();
         }
     }
